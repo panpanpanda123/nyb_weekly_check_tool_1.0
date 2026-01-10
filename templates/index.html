@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>门店检查项图片审核系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏪 门店检查项图片审核系统</h1>
+            <div class="header-info">
+                <div class="filter-section">
+                    <label for="operatorFilter">👤 运营人员:</label>
+                    <select id="operatorFilter" class="operator-filter">
+                        <option value="全部">全部</option>
+                    </select>
+                </div>
+                <span id="totalCount" class="count-badge">总计: 0</span>
+                <span id="reviewedCount" class="count-badge">已审核: 0</span>
+            </div>
+            
+            <!-- 视图切换标签 -->
+            <div class="view-tabs">
+                <button id="pendingTab" class="tab-btn active">📝 待审核 (每页10家店)</button>
+                <button id="completedTab" class="tab-btn">✓ 已完成列表</button>
+            </div>
+            
+            <!-- 管理员面板（仅"窦"可见） -->
+            <div id="adminPanel" class="admin-panel" style="display:none;">
+                <div class="admin-header">
+                    <h3>🔧 管理员工具</h3>
+                </div>
+                <div class="admin-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">本周进度:</span>
+                        <span class="stat-value" id="adminProgress">0/0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">完成度:</span>
+                        <span class="stat-value" id="adminPercent">0%</span>
+                    </div>
+                </div>
+                <div class="admin-actions">
+                    <button id="finishWeekBtn" class="admin-btn finish-btn">✓ 完成本周并导出</button>
+                    <label for="uploadFile" class="admin-btn upload-btn">📤 上传新Excel（开始新周期）</label>
+                    <input type="file" id="uploadFile" accept=".xlsx" style="display:none;">
+                </div>
+            </div>
+        </header>
+        
+        <main id="itemsContainer">
+            <!-- 检查项卡片将动态加载到这里 -->
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>正在加载检查项数据...</p>
+            </div>
+        </main>
+        
+        <div id="toast" class="toast"></div>
+    </div>
+    
+    <!-- 图片查看器模态框 -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modalImage" onclick="event.stopPropagation()">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
