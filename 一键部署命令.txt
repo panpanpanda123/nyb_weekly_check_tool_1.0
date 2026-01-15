@@ -1,0 +1,53 @@
+========================================
+审核结果展示系统 - 一键部署命令
+========================================
+
+【第一步】本地推送代码
+-----------------------
+在本地电脑运行：
+
+git add .
+git commit -m "准备部署"
+git push origin main
+
+
+【第二步】服务器安装
+-----------------------
+你已经登录服务器了，直接复制粘贴运行：
+
+cd ~
+wget https://raw.githubusercontent.com/panpanpanda123/nyb_weekly_check_tool_1.0/main/deploy/install.sh
+chmod +x install.sh
+bash install.sh
+
+当提示输入仓库地址时，输入：
+https://github.com/panpanpanda123/nyb_weekly_check_tool_1.0.git
+
+
+【第三步】访问系统
+-----------------------
+浏览器打开：
+
+展示页面: http://172.22.181.185
+管理页面: http://172.22.181.185/admin/upload
+
+
+【如果无法访问】
+-----------------------
+在阿里云控制台开放80端口：
+1. 登录 https://ecs.console.aliyun.com
+2. 安全组 → 配置规则 → 添加规则
+3. 端口：80/80，授权对象：0.0.0.0/0
+
+
+【常用命令】
+-----------------------
+查看状态: systemctl status review-viewer
+查看日志: journalctl -u review-viewer -f
+重启服务: systemctl restart review-viewer
+查看密码: cat /root/.review_viewer_db_credentials
+
+
+========================================
+完成！
+========================================

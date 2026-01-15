@@ -492,30 +492,179 @@ h1 {
     background-color: #3498db;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
+/* 响应式设计 - 移动端优化 */
+
+/* 平板设备 (768px - 1024px) */
+@media (max-width: 1024px) {
     #resultsContainer {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+}
+
+/* 手机设备 (最大 768px) */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+    
+    /* 头部优化 */
+    header {
+        padding: 20px 15px;
     }
     
     h1 {
-        font-size: 22px;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    /* 筛选区域优化 */
+    .filter-section {
+        padding: 15px;
     }
     
     .filter-row {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .filter-item label {
+        font-size: 13px;
+    }
+    
+    .filter-select {
+        padding: 10px 12px;
+        font-size: 15px;
+        /* 增大触摸区域 */
     }
     
     .filter-actions {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
+    }
+    
+    .search-btn,
+    .clear-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 15px;
     }
     
     .result-count {
         margin-left: 0;
         text-align: center;
+        padding: 10px 16px;
     }
     
+    /* 结果展示区域优化 */
+    #resultsContainer {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    /* 欢迎消息优化 */
+    .welcome-message {
+        padding: 50px 15px;
+    }
+    
+    .welcome-icon {
+        font-size: 60px;
+    }
+    
+    .welcome-message h2 {
+        font-size: 24px;
+    }
+    
+    .welcome-message p {
+        font-size: 15px;
+    }
+    
+    /* 空结果提示优化 */
+    .empty-results {
+        padding: 40px 15px;
+    }
+    
+    .empty-results-icon {
+        font-size: 50px;
+    }
+    
+    .empty-results h3 {
+        font-size: 20px;
+    }
+    
+    .empty-results p {
+        font-size: 14px;
+    }
+    
+    /* 卡片优化 */
+    .result-card {
+        border-radius: 10px;
+    }
+    
+    .card-header {
+        padding: 12px 15px;
+    }
+    
+    .store-name {
+        font-size: 15px;
+    }
+    
+    .store-details {
+        font-size: 12px;
+        gap: 8px;
+    }
+    
+    .item-name {
+        font-size: 16px;
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+    
+    .card-body {
+        padding: 15px;
+    }
+    
+    /* 图片容器优化 */
+    .image-container {
+        height: 220px;
+        margin-bottom: 15px;
+    }
+    
+    /* 移除悬停提示（移动端不需要） */
+    .image-container::after {
+        display: none;
+    }
+    
+    /* 审核状态优化 */
+    .review-status {
+        padding: 10px;
+        font-size: 15px;
+    }
+    
+    .status-icon {
+        font-size: 18px;
+    }
+    
+    /* 问题描述优化 */
+    .problem-note {
+        margin-top: 12px;
+        padding: 10px;
+    }
+    
+    .problem-label {
+        font-size: 12px;
+    }
+    
+    .problem-text {
+        font-size: 13px;
+    }
+    
+    /* 模态框优化 */
     .modal-content {
         max-width: 95%;
         max-height: 80vh;
@@ -529,7 +678,120 @@ h1 {
     
     .modal-caption {
         font-size: 14px;
-        padding: 10px 20px;
+        padding: 10px 15px;
         max-width: 90%;
+        margin-top: 15px;
+    }
+    
+    /* Toast 提示优化 */
+    .toast {
+        bottom: 20px;
+        right: 20px;
+        left: 20px;
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}
+
+/* 小屏手机 (最大 480px) */
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+    }
+    
+    header {
+        padding: 15px 12px;
+        margin-bottom: 15px;
+    }
+    
+    h1 {
+        font-size: 18px;
+    }
+    
+    .filter-section {
+        padding: 12px;
+    }
+    
+    .filter-select {
+        padding: 12px;
+        font-size: 16px;
+        /* iOS 最小字体16px避免自动缩放 */
+    }
+    
+    .search-btn,
+    .clear-btn {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    .image-container {
+        height: 200px;
+    }
+    
+    .store-name {
+        font-size: 14px;
+    }
+    
+    .item-name {
+        font-size: 15px;
+    }
+    
+    .modal-close {
+        font-size: 35px;
+        top: 5px;
+        right: 10px;
+    }
+}
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+    .image-container {
+        height: 180px;
+    }
+    
+    .modal-content {
+        max-height: 90vh;
+    }
+    
+    .welcome-message {
+        padding: 30px 15px;
+    }
+    
+    .welcome-icon {
+        font-size: 50px;
+    }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+    /* 增大可点击区域 */
+    .filter-select,
+    .search-btn,
+    .clear-btn,
+    button {
+        min-height: 44px;
+        /* iOS 推荐的最小触摸目标 */
+    }
+    
+    /* 移除悬停效果 */
+    .result-card:hover {
+        transform: none;
+    }
+    
+    .image-container img:hover {
+        transform: none;
+    }
+    
+    /* 点击反馈 */
+    .search-btn:active {
+        transform: scale(0.98);
+    }
+    
+    .clear-btn:active {
+        transform: scale(0.98);
+    }
+    
+    .result-card:active {
+        transform: scale(0.98);
     }
 }
