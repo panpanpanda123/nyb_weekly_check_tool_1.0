@@ -385,6 +385,7 @@ h1 {
     font-size: 16px;
     font-weight: 600;
     position: relative;
+    flex-wrap: wrap;
 }
 
 .review-status.pass {
@@ -405,6 +406,14 @@ h1 {
 
 .status-text {
     flex: 1;
+    min-width: 60px;
+}
+
+/* 操作按钮容器 */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* 复制按钮 */
@@ -429,6 +438,62 @@ h1 {
 
 .copy-btn:active {
     transform: translateY(0);
+}
+
+/* 已处理按钮 */
+.mark-done-btn {
+    padding: 6px 12px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.mark-done-btn:hover {
+    background-color: #229954;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+}
+
+.mark-done-btn:active {
+    transform: translateY(0);
+}
+
+/* 分页信息 */
+.pagination-info {
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+/* 下一页按钮 */
+.next-page-btn {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.next-page-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.next-page-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* 问题描述 */
@@ -767,11 +832,23 @@ h1 {
         font-size: 18px;
     }
     
-    /* 复制按钮移动端优化 */
-    .copy-btn {
+    /* 操作按钮移动端优化 */
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .copy-btn,
+    .mark-done-btn {
         padding: 8px 12px;
         font-size: 14px;
         min-height: 36px;
+    }
+    
+    /* 分页按钮优化 */
+    .next-page-btn {
+        width: 100%;
+        max-width: 300px;
     }
     
     /* 问题描述优化 */

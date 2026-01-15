@@ -22,10 +22,14 @@ let searchResults = [];
 let currentPage = 1;
 let totalPages = 1;
 let isLoading = false;
+let processedItems = new Set();  // 记录已处理的项目ID
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 页面加载开始...');
+    
+    // 加载已处理的项目记录
+    loadProcessedItems();
     
     // 加载筛选选项
     await loadFilterOptions();
@@ -34,6 +38,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     bindEvents();
     
     console.log('✅ 页面初始化完成');
+});
+
+// 监听浏览器返回按钮，用于关闭图片模态框
+window.addEventListener('popstate', function(event) {
+    const modal = document.getElementById('imageModal');
+    if (modal && modal.classList.contains('show')) {
+        // 如果模态框是打开的，关闭它（不触发history.back()）
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto';
+    }
 });
 
 /**
@@ -418,17 +432,20 @@ function renderResults(results) {
     const container = document.getElementById('resultsContainer');
     container.innerHTML = '';
     
-    if (results.length === 0) {
+    // 过滤掉已处理的项目
+    const unprocessedResults = results.filter(r => !processedItems.has(r.id));
+    
+    if (unprocessedResults.length === 0) {
         showEmptyResults();
         return;
     }
     
-    results.forEach(result => {
+    unprocessedResults.forEach(result => {
         const card = createResultCard(result);
         container.appendChild(card);
     });
     
-    // 添加加载更多按钮容器
+    // 添加分页按钮容器
     const loadMoreContainer = document.createElement('div');
     loadMoreContainer.id = 'loadMoreContainer';
     loadMoreContainer.style.gridColumn = '1 / -1';
@@ -444,7 +461,10 @@ function appendResults(results) {
     const container = document.getElementById('resultsContainer');
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     
-    results.forEach(result => {
+    // 过滤掉已处理的项目
+    const unprocessedResults = results.filter(r => !processedItems.has(r.id));
+    
+    unprocessedResults.forEach(result => {
         const card = createResultCard(result);
         // 在加载更多按钮之前插入
         if (loadMoreContainer) {
@@ -456,26 +476,37 @@ function appendResults(results) {
 }
 
 /**
- * 显示加载更多按钮
+ * 显示分页按钮
  */
 function showLoadMoreButton() {
     const container = document.getElementById('loadMoreContainer');
     if (container) {
         container.innerHTML = `
-            <button onclick="loadMore()" class="load-more-btn" ${isLoading ? 'disabled' : ''}>
-                ${isLoading ? '⏳ 加载中...' : '📄 加载更多'}
+            <div class="pagination-info">第 ${currentPage} / ${totalPages} 页</div>
+            <button onclick="loadNextPage()" class="next-page-btn" ${isLoading ? 'disabled' : ''}>
+                ${isLoading ? '⏳ 加载中...' : '下一页 →'}
             </button>
         `;
     }
 }
 
 /**
- * 隐藏加载更多按钮
+ * 隐藏分页按钮
  */
 function hideLoadMoreButton() {
     const container = document.getElementById('loadMoreContainer');
     if (container) {
-        container.innerHTML = '<div class="no-more-results">✓ 已加载全部结果</div>';
+        container.innerHTML = '<div class="no-more-results">✓ 已加载全部结果（第 ' + currentPage + ' / ' + totalPages + ' 页）</div>';
+    }
+}
+
+/**
+ * 加载下一页
+ */
+async function loadNextPage() {
+    if (currentPage < totalPages && !isLoading) {
+        currentPage++;
+        await loadSearchResults();
     }
 }
 
@@ -485,6 +516,8 @@ function hideLoadMoreButton() {
 function createResultCard(result) {
     const card = document.createElement('div');
     card.className = 'result-card';
+    card.dataset.resultId = result.id;
+    card.dataset.storeId = result.store_id;
     
     const imageUrl = result.image_url || '';
     const reviewResult = result.review_result || '';
@@ -517,11 +550,16 @@ function createResultCard(result) {
             <div class="review-status ${reviewResult === '合格' ? 'pass' : 'fail'}">
                 <span class="status-icon">${reviewResult === '合格' ? '✓' : '✗'}</span>
                 <span class="status-text">${reviewResult === '合格' ? '合格' : '不合格'}</span>
-                ${reviewResult === '不合格' ? `
-                    <button class="copy-btn" onclick="copyProblemInfo(event, ${JSON.stringify(result).replace(/"/g, '&quot;')})" title="一键复制问题信息">
-                        📋 复制
+                <div class="action-buttons">
+                    ${reviewResult === '不合格' ? `
+                        <button class="copy-btn" title="一键复制问题信息">
+                            📋 复制
+                        </button>
+                    ` : ''}
+                    <button class="mark-done-btn" title="标记已处理">
+                        ✓ 已处理
                     </button>
-                ` : ''}
+                </div>
             </div>
             ${reviewResult === '不合格' && problemNote ? `
                 <div class="problem-note">
@@ -554,6 +592,24 @@ function createResultCard(result) {
         // 设置点击事件
         imageContainer.onclick = function() {
             openImageModal(imageUrl, result.store_name + ' - ' + result.item_name);
+        };
+    }
+    
+    // 绑定复制按钮事件
+    const copyBtn = card.querySelector('.copy-btn');
+    if (copyBtn) {
+        copyBtn.onclick = function(e) {
+            e.stopPropagation();
+            copyProblemInfo(result);
+        };
+    }
+    
+    // 绑定已处理按钮事件
+    const markDoneBtn = card.querySelector('.mark-done-btn');
+    if (markDoneBtn) {
+        markDoneBtn.onclick = function(e) {
+            e.stopPropagation();
+            markAsProcessed(result.id, card);
         };
     }
     
@@ -706,6 +762,9 @@ function openImageModal(imageSrc, caption) {
     
     // 防止背景滚动
     document.body.style.overflow = 'hidden';
+    
+    // 添加历史记录状态，这样手机返回键可以关闭模态框
+    history.pushState({ modalOpen: true }, '', '');
 }
 
 /**
@@ -717,6 +776,11 @@ function closeImageModal() {
     
     // 恢复背景滚动
     document.body.style.overflow = 'auto';
+    
+    // 如果当前历史状态是模态框打开状态，返回上一页
+    if (history.state && history.state.modalOpen) {
+        history.back();
+    }
 }
 
 /**
@@ -733,10 +797,76 @@ function showToast(message, type = 'success') {
 }
 
 /**
+ * 标记为已处理
+ */
+async function markAsProcessed(resultId, cardElement) {
+    try {
+        // 添加到已处理列表
+        processedItems.add(resultId);
+        
+        // 保存到localStorage
+        localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
+        
+        // 添加淡出动画
+        cardElement.style.transition = 'opacity 0.3s, transform 0.3s';
+        cardElement.style.opacity = '0';
+        cardElement.style.transform = 'scale(0.9)';
+        
+        // 等待动画完成后移除卡片
+        setTimeout(async () => {
+            cardElement.remove();
+            
+            // 检查当前页是否还有卡片
+            const remainingCards = document.querySelectorAll('.result-card').length;
+            
+            if (remainingCards === 0 && currentPage < totalPages) {
+                // 当前页没有卡片了，自动加载下一页
+                showToast('✓ 已标记为已处理，正在加载下一页...', 'success');
+                currentPage++;
+                await loadSearchResults();
+            } else if (remainingCards === 0 && currentPage >= totalPages) {
+                // 所有结果都处理完了
+                showToast('🎉 所有结果已处理完毕！', 'success');
+                showWelcomeMessage();
+            } else {
+                showToast('✓ 已标记为已处理', 'success');
+            }
+        }, 300);
+        
+    } catch (error) {
+        console.error('标记失败:', error);
+        showToast('✗ 标记失败', 'error');
+    }
+}
+
+/**
+ * 从localStorage加载已处理的项目
+ */
+function loadProcessedItems() {
+    try {
+        const saved = localStorage.getItem('processedItems');
+        if (saved) {
+            processedItems = new Set(JSON.parse(saved));
+        }
+    } catch (error) {
+        console.error('加载已处理项目失败:', error);
+        processedItems = new Set();
+    }
+}
+
+/**
+ * 清除已处理记录
+ */
+function clearProcessedItems() {
+    processedItems.clear();
+    localStorage.removeItem('processedItems');
+    showToast('✓ 已清除所有已处理记录', 'info');
+}
+
+/**
  * 复制问题信息（图片+门店信息+问题描述）
  */
-async function copyProblemInfo(event, result) {
-    event.stopPropagation();  // 阻止事件冒泡
+async function copyProblemInfo(result) {
     
     try {
         const imageUrl = result.image_url || '';
