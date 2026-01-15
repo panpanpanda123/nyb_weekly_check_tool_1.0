@@ -384,6 +384,7 @@ h1 {
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
+    position: relative;
 }
 
 .review-status.pass {
@@ -404,6 +405,30 @@ h1 {
 
 .status-text {
     flex: 1;
+}
+
+/* 复制按钮 */
+.copy-btn {
+    padding: 6px 12px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.copy-btn:active {
+    transform: translateY(0);
 }
 
 /* 问题描述 */
@@ -735,10 +760,18 @@ h1 {
     .review-status {
         padding: 10px;
         font-size: 15px;
+        flex-wrap: wrap;
     }
     
     .status-icon {
         font-size: 18px;
+    }
+    
+    /* 复制按钮移动端优化 */
+    .copy-btn {
+        padding: 8px 12px;
+        font-size: 14px;
+        min-height: 36px;
     }
     
     /* 问题描述优化 */

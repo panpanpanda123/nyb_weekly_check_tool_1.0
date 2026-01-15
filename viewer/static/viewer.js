@@ -517,6 +517,11 @@ function createResultCard(result) {
             <div class="review-status ${reviewResult === '合格' ? 'pass' : 'fail'}">
                 <span class="status-icon">${reviewResult === '合格' ? '✓' : '✗'}</span>
                 <span class="status-text">${reviewResult === '合格' ? '合格' : '不合格'}</span>
+                ${reviewResult === '不合格' ? `
+                    <button class="copy-btn" onclick="copyProblemInfo(event, ${JSON.stringify(result).replace(/"/g, '&quot;')})" title="一键复制问题信息">
+                        📋 复制
+                    </button>
+                ` : ''}
             </div>
             ${reviewResult === '不合格' && problemNote ? `
                 <div class="problem-note">
@@ -725,6 +730,90 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+/**
+ * 复制问题信息（图片+门店信息+问题描述）
+ */
+async function copyProblemInfo(event, result) {
+    event.stopPropagation();  // 阻止事件冒泡
+    
+    try {
+        const imageUrl = result.image_url || '';
+        const storeId = result.store_id || '';
+        const storeName = result.store_name || '';
+        const itemName = result.item_name || '';
+        const problemNote = result.problem_note || '';
+        
+        // 构建文本内容（不包含图片链接）
+        const textContent = `【不合格项目】
+门店编号：${storeId}
+门店名称：${storeName}
+检查项：${itemName}
+问题描述：${problemNote}`;
+        
+        // 尝试复制图片和文本（现代浏览器）
+        if (navigator.clipboard && window.ClipboardItem) {
+            try {
+                if (imageUrl) {
+                    // 显示加载提示
+                    showToast('⏳ 正在加载图片...', 'info');
+                    
+                    // 获取图片
+                    const response = await fetch(imageUrl, {
+                        mode: 'cors',
+                        credentials: 'omit'
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('图片加载失败');
+                    }
+                    
+                    const blob = await response.blob();
+                    
+                    // 同时复制图片和文本
+                    const clipboardItem = new ClipboardItem({
+                        'text/plain': new Blob([textContent], { type: 'text/plain' }),
+                        [blob.type]: blob
+                    });
+                    
+                    await navigator.clipboard.write([clipboardItem]);
+                    showToast('✓ 已复制图片和文字，可直接粘贴发送', 'success');
+                } else {
+                    // 没有图片，只复制文本
+                    await navigator.clipboard.writeText(textContent);
+                    showToast('✓ 已复制文字信息（无图片）', 'success');
+                }
+            } catch (imgError) {
+                console.error('复制失败:', imgError);
+                
+                // 如果是CORS错误或图片加载失败，提示用户
+                if (imgError.message.includes('CORS') || imgError.message.includes('fetch')) {
+                    showToast('⚠️ 图片跨域限制，已复制文字信息', 'warning');
+                    await navigator.clipboard.writeText(textContent);
+                } else {
+                    // 其他错误，降级为只复制文本
+                    await navigator.clipboard.writeText(textContent);
+                    showToast('⚠️ 图片复制失败，已复制文字信息', 'warning');
+                }
+            }
+        } else {
+            // 旧版浏览器不支持图片复制，只复制文本
+            const textarea = document.createElement('textarea');
+            textarea.value = textContent;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('✓ 已复制文字信息（浏览器不支持图片复制）', 'success');
+        }
+        
+    } catch (error) {
+        console.error('复制失败:', error);
+        showToast('✗ 复制失败，请手动复制', 'error');
+    }
 }
 
 /**

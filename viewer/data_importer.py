@@ -140,7 +140,17 @@ class DataImporter:
             import_time = datetime.now()
             
             for _, row in df.iterrows():
-                store_id = str(row.get('门店编号', '')) if pd.notna(row.get('门店编号')) else ''
+                # 门店编号转换为字符串，保留前导零
+                store_id_raw = row.get('门店编号', '')
+                if pd.notna(store_id_raw):
+                    # 如果是数字类型，转换为整数再转字符串（去除小数点）
+                    if isinstance(store_id_raw, (int, float)):
+                        store_id = str(int(store_id_raw))
+                    else:
+                        # 如果已经是字符串，直接使用
+                        store_id = str(store_id_raw).strip()
+                else:
+                    store_id = ''
                 
                 # 尝试从白名单中获取门店信息
                 whitelist_store = whitelist_stores.get(store_id)
