@@ -222,6 +222,7 @@ def search_reviews():
     """
     根据筛选条件搜索审核结果
     支持多条件组合查询
+    支持门店编号精确搜索和门店名称模糊搜索
     Requirements: 1.4, 1.5
     """
     try:
@@ -234,8 +235,18 @@ def search_reviews():
         store_tag = request.args.get('store_tag', '').strip()
         review_result = request.args.get('review_result', '').strip()
         
+        # 获取门店搜索参数
+        store_search = request.args.get('store_search', '').strip()
+        
         # 构建查询
         query = session.query(ViewerReviewResult)
+        
+        # 门店搜索：精确匹配门店编号或模糊匹配门店名称
+        if store_search:
+            query = query.filter(
+                (ViewerReviewResult.store_id == store_search) |
+                (ViewerReviewResult.store_name.like(f'%{store_search}%'))
+            )
         
         # 应用筛选条件
         if war_zone:

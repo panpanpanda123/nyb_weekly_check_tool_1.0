@@ -89,6 +89,39 @@ function populateSelect(selectId, options) {
  * 绑定事件
  */
 function bindEvents() {
+    // 门店搜索框
+    const storeSearchInput = document.getElementById('storeSearch');
+    const storeSearchBtn = document.getElementById('storeSearchBtn');
+    const clearStoreSearchBtn = document.getElementById('clearStoreSearchBtn');
+    
+    // 门店搜索按钮
+    storeSearchBtn.addEventListener('click', performStoreSearch);
+    
+    // 回车键触发搜索
+    storeSearchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performStoreSearch();
+        }
+    });
+    
+    // 输入框变化时显示/隐藏清除按钮
+    storeSearchInput.addEventListener('input', function(e) {
+        if (e.target.value.trim()) {
+            clearStoreSearchBtn.style.display = 'inline-block';
+        } else {
+            clearStoreSearchBtn.style.display = 'none';
+        }
+    });
+    
+    // 清除门店搜索
+    clearStoreSearchBtn.addEventListener('click', function() {
+        storeSearchInput.value = '';
+        clearStoreSearchBtn.style.display = 'none';
+        showWelcomeMessage();
+        updateResultCount(0);
+        showToast('已清除搜索', 'info');
+    });
+    
     // 战区选择变化 - 级联更新省份
     document.getElementById('warZoneFilter').addEventListener('change', async function(e) {
         const warZone = e.target.value;
@@ -199,6 +232,51 @@ async function loadCities(province) {
     } catch (error) {
         console.error('加载城市列表失败:', error);
         showToast('加载城市列表失败', 'error');
+    }
+}
+
+/**
+ * 执行门店搜索（精确匹配门店编号或模糊匹配门店名称）
+ */
+async function performStoreSearch() {
+    try {
+        const searchInput = document.getElementById('storeSearch');
+        const searchValue = searchInput.value.trim();
+        
+        if (!searchValue) {
+            showToast('请输入门店编号或门店名称', 'warning');
+            return;
+        }
+        
+        // 显示加载状态
+        showLoading();
+        
+        // 构建查询参数
+        const params = new URLSearchParams();
+        params.append('store_search', searchValue);
+        
+        const response = await fetch(`/api/search?${params.toString()}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            searchResults = data.data.results;
+            renderResults(searchResults);
+            updateResultCount(data.data.count);
+            
+            if (data.data.count === 0) {
+                showToast('未找到匹配的门店', 'info');
+            } else {
+                showToast(`找到 ${data.data.count} 条审核结果`, 'success');
+            }
+        } else {
+            showToast('搜索失败: ' + data.error, 'error');
+            showEmptyResults();
+        }
+        
+    } catch (error) {
+        console.error('搜索失败:', error);
+        showToast('搜索失败，请重试', 'error');
+        showEmptyResults();
     }
 }
 

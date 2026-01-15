@@ -34,6 +34,55 @@ h1 {
     margin-bottom: 20px;
 }
 
+/* 搜索区域样式 */
+.search-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+}
+
+.search-section label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #34495e;
+    white-space: nowrap;
+}
+
+.store-search {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.store-search:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.clear-search-btn {
+    padding: 10px 16px;
+    background-color: #95a5a6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.clear-search-btn:hover {
+    background-color: #7f8c8d;
+}
+
 /* 筛选区域样式 */
 .filter-section {
     background-color: #f8f9fa;
