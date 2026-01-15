@@ -59,12 +59,15 @@ class DataImporter:
             # 导入数据
             records_count = 0
             for _, row in df.iterrows():
+                # 兼容"门店ID"和"门店编号"两种列名
+                store_id_value = row.get('门店ID') if '门店ID' in df.columns else row.get('门店编号')
+                
                 # 跳过门店ID为空的行
-                if pd.isna(row.get('门店ID')):
+                if pd.isna(store_id_value):
                     continue
                 
                 store = StoreWhitelist(
-                    store_id=str(int(row['门店ID'])),
+                    store_id=str(int(store_id_value)),
                     province=str(row.get('省份', '')) if pd.notna(row.get('省份')) else None,
                     city=str(row.get('城市', '')) if pd.notna(row.get('城市')) else None,
                     store_name=str(row.get('门店名称', '')) if pd.notna(row.get('门店名称')) else None,
@@ -225,8 +228,10 @@ class DataImporter:
         Returns:
             bool: 格式是否正确
         """
-        required_columns = ['门店ID', '门店名称']
-        return all(col in df.columns for col in required_columns)
+        # 兼容"门店ID"和"门店编号"两种列名
+        has_store_id = '门店ID' in df.columns or '门店编号' in df.columns
+        has_store_name = '门店名称' in df.columns
+        return has_store_id and has_store_name
     
     def validate_reviews_format(self, df: pd.DataFrame) -> bool:
         """

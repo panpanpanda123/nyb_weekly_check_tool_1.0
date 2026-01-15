@@ -678,7 +678,49 @@ h1 {
         padding: 15px;
     }
     
-    /* 图片容器优化 */
+    /* 图片加载提示 */
+.image-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #95a5a6;
+    font-size: 14px;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* 加载更多按钮 */
+.load-more-btn {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.load-more-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.no-more-results {
+    color: #95a5a6;
+    font-size: 14px;
+    padding: 10px;
+}
+
+/* 图片容器优化 */
     .image-container {
         height: 220px;
         margin-bottom: 15px;

@@ -14,10 +14,14 @@ let currentFilters = {
     province: '',
     city: '',
     store_tag: '',
-    review_result: ''
+    review_result: '',
+    store_search: ''
 };
 
 let searchResults = [];
+let currentPage = 1;
+let totalPages = 1;
+let isLoading = false;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -248,30 +252,12 @@ async function performStoreSearch() {
             return;
         }
         
-        // 显示加载状态
-        showLoading();
+        // 重置分页
+        currentPage = 1;
+        currentFilters.store_search = searchValue;
         
-        // 构建查询参数
-        const params = new URLSearchParams();
-        params.append('store_search', searchValue);
-        
-        const response = await fetch(`/api/search?${params.toString()}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            searchResults = data.data.results;
-            renderResults(searchResults);
-            updateResultCount(data.data.count);
-            
-            if (data.data.count === 0) {
-                showToast('未找到匹配的门店', 'info');
-            } else {
-                showToast(`找到 ${data.data.count} 条审核结果`, 'success');
-            }
-        } else {
-            showToast('搜索失败: ' + data.error, 'error');
-            showEmptyResults();
-        }
+        // 执行搜索
+        await loadSearchResults();
         
     } catch (error) {
         console.error('搜索失败:', error);
@@ -281,12 +267,18 @@ async function performStoreSearch() {
 }
 
 /**
- * 执行搜索
+ * 加载搜索结果（支持分页）
  */
-async function performSearch() {
+async function loadSearchResults() {
+    if (isLoading) return;
+    
     try {
+        isLoading = true;
+        
         // 显示加载状态
-        showLoading();
+        if (currentPage === 1) {
+            showLoading();
+        }
         
         // 构建查询参数
         const params = new URLSearchParams();
@@ -295,30 +287,79 @@ async function performSearch() {
         if (currentFilters.city) params.append('city', currentFilters.city);
         if (currentFilters.store_tag) params.append('store_tag', currentFilters.store_tag);
         if (currentFilters.review_result) params.append('review_result', currentFilters.review_result);
+        if (currentFilters.store_search) params.append('store_search', currentFilters.store_search);
+        params.append('page', currentPage);
+        params.append('per_page', 9);  // 每页9条
         
         const response = await fetch(`/api/search?${params.toString()}`);
         const data = await response.json();
         
         if (data.success) {
-            searchResults = data.data.results;
-            renderResults(searchResults);
-            updateResultCount(data.data.count);
+            const results = data.data.results;
+            totalPages = data.data.total_pages;
             
-            if (data.data.count === 0) {
-                showToast('未找到符合条件的审核结果', 'info');
+            if (currentPage === 1) {
+                // 第一页，替换所有结果
+                searchResults = results;
+                renderResults(searchResults);
             } else {
-                showToast(`找到 ${data.data.count} 条审核结果`, 'success');
+                // 后续页，追加结果
+                searchResults = searchResults.concat(results);
+                appendResults(results);
+            }
+            
+            updateResultCount(data.data.total_count, data.data.count);
+            
+            // 显示加载更多按钮
+            if (data.data.has_more) {
+                showLoadMoreButton();
+            } else {
+                hideLoadMoreButton();
+            }
+            
+            if (data.data.total_count === 0) {
+                showToast('未找到符合条件的审核结果', 'info');
+            } else if (currentPage === 1) {
+                showToast(`找到 ${data.data.total_count} 条审核结果`, 'success');
             }
         } else {
             showToast('搜索失败: ' + data.error, 'error');
-            showEmptyResults();
+            if (currentPage === 1) {
+                showEmptyResults();
+            }
         }
         
     } catch (error) {
         console.error('搜索失败:', error);
         showToast('搜索失败，请重试', 'error');
-        showEmptyResults();
+        if (currentPage === 1) {
+            showEmptyResults();
+        }
+    } finally {
+        isLoading = false;
     }
+}
+
+/**
+ * 加载更多结果
+ */
+async function loadMore() {
+    if (currentPage < totalPages) {
+        currentPage++;
+        await loadSearchResults();
+    }
+}
+
+/**
+ * 执行搜索
+ */
+async function performSearch() {
+    // 重置分页
+    currentPage = 1;
+    currentFilters.store_search = '';  // 清除门店搜索
+    
+    // 执行搜索
+    await loadSearchResults();
 }
 
 /**
@@ -331,8 +372,13 @@ function clearFilters() {
         province: '',
         city: '',
         store_tag: '',
-        review_result: ''
+        review_result: '',
+        store_search: ''
     };
+    
+    // 重置分页
+    currentPage = 1;
+    totalPages = 1;
     
     // 重置下拉菜单
     document.getElementById('warZoneFilter').value = '';
@@ -340,6 +386,14 @@ function clearFilters() {
     document.getElementById('cityFilter').value = '';
     document.getElementById('storeTagFilter').value = '';
     document.getElementById('reviewResultFilter').value = '';
+    
+    // 清除门店搜索
+    const storeSearchInput = document.getElementById('storeSearch');
+    if (storeSearchInput) {
+        storeSearchInput.value = '';
+        const clearBtn = document.getElementById('clearStoreSearchBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
     
     // 禁用省份和城市下拉菜单
     document.getElementById('provinceFilter').disabled = true;
@@ -351,7 +405,8 @@ function clearFilters() {
     
     // 显示欢迎消息
     showWelcomeMessage();
-    updateResultCount(0);
+    updateResultCount(0, 0);
+    hideLoadMoreButton();
     
     showToast('已清除所有筛选条件', 'info');
 }
@@ -372,6 +427,56 @@ function renderResults(results) {
         const card = createResultCard(result);
         container.appendChild(card);
     });
+    
+    // 添加加载更多按钮容器
+    const loadMoreContainer = document.createElement('div');
+    loadMoreContainer.id = 'loadMoreContainer';
+    loadMoreContainer.style.gridColumn = '1 / -1';
+    loadMoreContainer.style.textAlign = 'center';
+    loadMoreContainer.style.padding = '20px';
+    container.appendChild(loadMoreContainer);
+}
+
+/**
+ * 追加搜索结果（分页加载）
+ */
+function appendResults(results) {
+    const container = document.getElementById('resultsContainer');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    
+    results.forEach(result => {
+        const card = createResultCard(result);
+        // 在加载更多按钮之前插入
+        if (loadMoreContainer) {
+            container.insertBefore(card, loadMoreContainer);
+        } else {
+            container.appendChild(card);
+        }
+    });
+}
+
+/**
+ * 显示加载更多按钮
+ */
+function showLoadMoreButton() {
+    const container = document.getElementById('loadMoreContainer');
+    if (container) {
+        container.innerHTML = `
+            <button onclick="loadMore()" class="load-more-btn" ${isLoading ? 'disabled' : ''}>
+                ${isLoading ? '⏳ 加载中...' : '📄 加载更多'}
+            </button>
+        `;
+    }
+}
+
+/**
+ * 隐藏加载更多按钮
+ */
+function hideLoadMoreButton() {
+    const container = document.getElementById('loadMoreContainer');
+    if (container) {
+        container.innerHTML = '<div class="no-more-results">✓ 已加载全部结果</div>';
+    }
 }
 
 /**
@@ -402,9 +507,10 @@ function createResultCard(result) {
             <div class="item-name">📋 ${escapeHtml(result.item_name)}</div>
         </div>
         <div class="card-body">
-            <div class="image-container" onclick="openImageModal('${escapeHtml(imageUrl)}', '${escapeHtml(result.store_name + ' - ' + result.item_name)}')">
+            <div class="image-container clickable-image">
                 ${imageUrl ? 
-                    `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(result.item_name)}" loading="lazy" onerror="handleImageError(this)">` :
+                    `<img alt="${escapeHtml(result.item_name)}" loading="lazy" referrerpolicy="no-referrer" data-retry="0">
+                     <div class="image-loading">⏳ 加载中...</div>` :
                     '<div class="image-placeholder">📷 暂无图片</div>'
                 }
             </div>
@@ -421,7 +527,100 @@ function createResultCard(result) {
         </div>
     `;
     
+    // 使用JavaScript直接设置img的src属性，避免HTML转义问题
+    if (imageUrl) {
+        const imageContainer = card.querySelector('.image-container');
+        const img = imageContainer.querySelector('img');
+        const loadingDiv = imageContainer.querySelector('.image-loading');
+        
+        if (img) {
+            // 设置加载和错误处理
+            img.onload = function() {
+                if (loadingDiv) loadingDiv.style.display = 'none';
+            };
+            
+            img.onerror = function() {
+                handleImageErrorWithRetry(this, imageUrl, loadingDiv);
+            };
+            
+            img.src = imageUrl;  // 直接设置src，图片从图床加载，不经过服务器
+        }
+        
+        // 设置点击事件
+        imageContainer.onclick = function() {
+            openImageModal(imageUrl, result.store_name + ' - ' + result.item_name);
+        };
+    }
+    
     return card;
+}
+
+/**
+ * 处理图片加载错误（带重试机制）
+ */
+function handleImageErrorWithRetry(img, originalUrl, loadingDiv) {
+    const container = img.parentElement;
+    const retryCount = parseInt(img.dataset.retry || '0');
+    const maxRetries = 3;
+    
+    if (retryCount < maxRetries) {
+        // 重试加载
+        img.dataset.retry = (retryCount + 1).toString();
+        
+        if (loadingDiv) {
+            loadingDiv.textContent = `⏳ 重试中 (${retryCount + 1}/${maxRetries})...`;
+            loadingDiv.style.display = 'block';
+        }
+        
+        // 延迟重试，避免立即失败
+        setTimeout(() => {
+            img.src = originalUrl + '?retry=' + Date.now(); // 添加时间戳避免缓存
+        }, 1000 * (retryCount + 1)); // 递增延迟：1秒、2秒、3秒
+    } else {
+        // 重试失败，显示错误信息
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'image-error';
+        errorDiv.innerHTML = `
+            ❌ 图片加载失败
+            <br><small style="font-size:10px;">网络较慢或图片不存在</small>
+            <br><button onclick="retryLoadImage(this, '${escapeHtml(originalUrl)}')" 
+                        style="margin-top:5px;padding:5px 10px;cursor:pointer;border:none;background:#667eea;color:white;border-radius:4px;">
+                🔄 重新加载
+            </button>
+        `;
+        
+        img.style.display = 'none';
+        container.appendChild(errorDiv);
+    }
+}
+
+/**
+ * 手动重试加载图片
+ */
+function retryLoadImage(button, imageUrl) {
+    const errorDiv = button.parentElement;
+    const container = errorDiv.parentElement;
+    const img = container.querySelector('img');
+    
+    if (img) {
+        // 重置重试计数
+        img.dataset.retry = '0';
+        img.style.display = 'block';
+        
+        // 移除错误提示
+        errorDiv.remove();
+        
+        // 显示加载提示
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'image-loading';
+        loadingDiv.textContent = '⏳ 加载中...';
+        container.appendChild(loadingDiv);
+        
+        // 重新加载图片
+        img.src = imageUrl + '?retry=' + Date.now();
+    }
 }
 
 /**
@@ -468,12 +667,15 @@ function showEmptyResults() {
 /**
  * 更新结果计数
  */
-function updateResultCount(count) {
-    document.getElementById('resultCount').textContent = `结果: ${count}`;
+function updateResultCount(totalCount, currentCount) {
+    const countText = currentCount !== undefined 
+        ? `显示: ${currentCount} / 总计: ${totalCount}`
+        : `结果: ${totalCount}`;
+    document.getElementById('resultCount').textContent = countText;
 }
 
 /**
- * 处理图片加载错误
+ * 处理图片加载错误（旧版本，保留兼容）
  */
 function handleImageError(img) {
     const container = img.parentElement;

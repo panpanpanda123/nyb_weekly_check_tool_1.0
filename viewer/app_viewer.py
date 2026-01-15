@@ -223,6 +223,7 @@ def search_reviews():
     根据筛选条件搜索审核结果
     支持多条件组合查询
     支持门店编号精确搜索和门店名称模糊搜索
+    支持分页加载（每次最多返回100条，按门店分组）
     Requirements: 1.4, 1.5
     """
     try:
@@ -237,6 +238,10 @@ def search_reviews():
         
         # 获取门店搜索参数
         store_search = request.args.get('store_search', '').strip()
+        
+        # 获取分页参数
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 9))  # 每页9条记录
         
         # 构建查询
         query = session.query(ViewerReviewResult)
@@ -268,20 +273,32 @@ def search_reviews():
                 ViewerReviewResult.store_id == StoreWhitelist.store_id
             ).filter(StoreWhitelist.store_tag == store_tag)
         
-        # 执行查询并排序
+        # 获取总数
+        total_count = query.count()
+        
+        # 执行查询并排序，应用分页
         results = query.order_by(
+            ViewerReviewResult.store_id,  # 先按门店分组
             ViewerReviewResult.review_time.desc().nullslast(),
             ViewerReviewResult.id.desc()
-        ).all()
+        ).limit(per_page).offset((page - 1) * per_page).all()
         
         # 转换为字典列表
         results_data = [result.to_dict() for result in results]
+        
+        # 计算总页数
+        total_pages = (total_count + per_page - 1) // per_page
         
         return jsonify({
             'success': True,
             'data': {
                 'results': results_data,
-                'count': len(results_data)
+                'count': len(results_data),
+                'total_count': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages,
+                'has_more': page < total_pages
             }
         })
         
