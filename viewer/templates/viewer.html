@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审核结果展示系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 审核结果展示系统</h1>
+            
+            <!-- 筛选区域 -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="warZoneFilter">战区:</label>
+                        <select id="warZoneFilter" class="filter-select">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="provinceFilter">省份:</label>
+                        <select id="provinceFilter" class="filter-select" disabled>
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="cityFilter">城市:</label>
+                        <select id="cityFilter" class="filter-select" disabled>
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="storeTagFilter">门店标签:</label>
+                        <select id="storeTagFilter" class="filter-select">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="reviewResultFilter">是否合格:</label>
+                        <select id="reviewResultFilter" class="filter-select">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button id="searchBtn" class="search-btn">🔍 搜索</button>
+                    <button id="clearBtn" class="clear-btn">✕ 清除筛选</button>
+                    <span id="resultCount" class="result-count">结果: 0</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 结果展示区域 -->
+        <main id="resultsContainer">
+            <div class="welcome-message">
+                <div class="welcome-icon">👋</div>
+                <h2>欢迎使用审核结果展示系统</h2>
+                <p>请选择筛选条件并点击"搜索"按钮查看审核结果</p>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 图片模态框 -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modalImage" onclick="event.stopPropagation()">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+    
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+    
+    <script src="{{ url_for('static', filename='viewer.js') }}"></script>
+</body>
+</html>

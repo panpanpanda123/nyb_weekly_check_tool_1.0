@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据管理 - 审核结果展示系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}">
+    <style>
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .upload-section {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+        
+        .upload-section h2 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .upload-section p {
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9fa;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #e8eaf6;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-size: 16px;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            font-size: 13px;
+            color: #95a5a6;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .upload-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result-message.success {
+            background-color: #d5f4e6;
+            color: #27ae60;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .result-message.error {
+            background-color: #fadbd8;
+            color: #e74c3c;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .result-message.info {
+            background-color: #d6eaf8;
+            color: #2980b9;
+            border-left: 4px solid #2980b9;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            opacity: 0.8;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <a href="/" class="back-link">← 返回展示系统</a>
+        
+        <header style="background-color: #fff; padding: 25px 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); margin-bottom: 30px;">
+            <h1 style="font-size: 28px; color: #2c3e50; margin: 0;">🔧 数据管理</h1>
+        </header>
+        
+        <!-- 白名单上传区域 -->
+        <div class="upload-section">
+            <h2>📋 上传白名单</h2>
+            <p>上传包含门店基础信息的Excel文件（.xlsx格式），包含战区、省份、城市、门店标签等字段。</p>
+            
+            <div class="upload-area" id="whitelistUploadArea" onclick="document.getElementById('whitelistFile').click()">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">点击选择文件或拖拽文件到此处</div>
+                <div class="upload-hint">支持 .xlsx 格式，最大 50MB</div>
+            </div>
+            
+            <input type="file" id="whitelistFile" class="file-input" accept=".xlsx">
+            <button id="whitelistUploadBtn" class="upload-btn" disabled>上传白名单</button>
+            
+            <div class="progress-bar" id="whitelistProgress">
+                <div class="progress-fill"></div>
+            </div>
+            
+            <div class="result-message" id="whitelistResult"></div>
+        </div>
+        
+        <!-- 审核结果上传区域 -->
+        <div class="upload-section">
+            <h2>📊 上传审核结果</h2>
+            <p>上传审核系统导出的审核结果CSV文件（.csv格式），包含门店审核数据。</p>
+            
+            <div class="upload-area" id="reviewsUploadArea" onclick="document.getElementById('reviewsFile').click()">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">点击选择文件或拖拽文件到此处</div>
+                <div class="upload-hint">支持 .csv 格式，最大 50MB</div>
+            </div>
+            
+            <input type="file" id="reviewsFile" class="file-input" accept=".csv">
+            <button id="reviewsUploadBtn" class="upload-btn" disabled>上传审核结果</button>
+            
+            <div class="progress-bar" id="reviewsProgress">
+                <div class="progress-fill"></div>
+            </div>
+            
+            <div class="result-message" id="reviewsResult"></div>
+        </div>
+    </div>
+    
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+    
+    <script>
+        // 白名单文件上传
+        const whitelistFile = document.getElementById('whitelistFile');
+        const whitelistUploadBtn = document.getElementById('whitelistUploadBtn');
+        const whitelistUploadArea = document.getElementById('whitelistUploadArea');
+        const whitelistResult = document.getElementById('whitelistResult');
+        const whitelistProgress = document.getElementById('whitelistProgress');
+        
+        // 审核结果文件上传
+        const reviewsFile = document.getElementById('reviewsFile');
+        const reviewsUploadBtn = document.getElementById('reviewsUploadBtn');
+        const reviewsUploadArea = document.getElementById('reviewsUploadArea');
+        const reviewsResult = document.getElementById('reviewsResult');
+        const reviewsProgress = document.getElementById('reviewsProgress');
+        
+        // 白名单文件选择
+        whitelistFile.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                whitelistUploadArea.querySelector('.upload-text').textContent = `已选择: ${file.name}`;
+                whitelistUploadBtn.disabled = false;
+            }
+        });
+        
+        // 审核结果文件选择
+        reviewsFile.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                reviewsUploadArea.querySelector('.upload-text').textContent = `已选择: ${file.name}`;
+                reviewsUploadBtn.disabled = false;
+            }
+        });
+        
+        // 白名单上传
+        whitelistUploadBtn.addEventListener('click', async function() {
+            await uploadFile(whitelistFile.files[0], '/api/upload/whitelist', whitelistResult, whitelistProgress, whitelistUploadBtn);
+        });
+        
+        // 审核结果上传
+        reviewsUploadBtn.addEventListener('click', async function() {
+            await uploadFile(reviewsFile.files[0], '/api/upload/reviews', reviewsResult, reviewsProgress, reviewsUploadBtn);
+        });
+        
+        // 拖拽上传 - 白名单
+        setupDragAndDrop(whitelistUploadArea, whitelistFile);
+        
+        // 拖拽上传 - 审核结果
+        setupDragAndDrop(reviewsUploadArea, reviewsFile);
+        
+        /**
+         * 设置拖拽上传
+         */
+        function setupDragAndDrop(uploadArea, fileInput) {
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        
+        /**
+         * 上传文件
+         */
+        async function uploadFile(file, url, resultDiv, progressDiv, uploadBtn) {
+            if (!file) {
+                showToast('请先选择文件', 'error');
+                return;
+            }
+            
+            try {
+                // 显示进度条
+                progressDiv.style.display = 'block';
+                progressDiv.querySelector('.progress-fill').style.width = '30%';
+                
+                // 禁用上传按钮
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = '上传中...';
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressDiv.querySelector('.progress-fill').style.width = '70%';
+                
+                const data = await response.json();
+                
+                progressDiv.querySelector('.progress-fill').style.width = '100%';
+                
+                // 隐藏进度条
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressDiv.querySelector('.progress-fill').style.width = '0%';
+                }, 500);
+                
+                // 显示结果
+                if (data.success) {
+                    showResult(resultDiv, data.message, 'success');
+                    showToast('上传成功', 'success');
+                    
+                    // 重置文件输入
+                    file.value = '';
+                    uploadBtn.textContent = url.includes('whitelist') ? '上传白名单' : '上传审核结果';
+                } else {
+                    showResult(resultDiv, data.error, 'error');
+                    showToast('上传失败', 'error');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = url.includes('whitelist') ? '上传白名单' : '上传审核结果';
+                }
+                
+            } catch (error) {
+                console.error('上传失败:', error);
+                showResult(resultDiv, '上传失败: ' + error.message, 'error');
+                showToast('上传失败', 'error');
+                
+                // 隐藏进度条
+                progressDiv.style.display = 'none';
+                progressDiv.querySelector('.progress-fill').style.width = '0%';
+                
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = url.includes('whitelist') ? '上传白名单' : '上传审核结果';
+            }
+        }
+        
+        /**
+         * 显示结果消息
+         */
+        function showResult(resultDiv, message, type) {
+            resultDiv.textContent = message;
+            resultDiv.className = `result-message ${type}`;
+            resultDiv.style.display = 'block';
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        /**
+         * 显示提示消息
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

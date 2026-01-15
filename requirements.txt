@@ -6,3 +6,8 @@ pytest==7.4.0
 hypothesis==6.82.0
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
+
+# 生产环境依赖
+gunicorn==21.2.0
+python-dotenv==1.0.0
+gevent==23.9.1

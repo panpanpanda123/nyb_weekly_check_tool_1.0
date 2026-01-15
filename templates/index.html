@@ -17,6 +17,12 @@
                         <option value="全部">全部</option>
                     </select>
                 </div>
+                <div class="search-section">
+                    <label for="storeSearch">🔍 搜索门店:</label>
+                    <input type="text" id="storeSearch" class="store-search" placeholder="输入完整的门店编号或名称">
+                    <button id="searchBtn" class="search-btn">搜索</button>
+                    <button id="clearSearchBtn" class="clear-search-btn" style="display:none;">✕ 清除</button>
+                </div>
                 <span id="totalCount" class="count-badge">总计: 0</span>
                 <span id="reviewedCount" class="count-badge">已审核: 0</span>
             </div>
@@ -27,23 +33,32 @@
                 <button id="completedTab" class="tab-btn">✓ 已完成列表</button>
             </div>
             
+            <!-- 统计面板（所有运营人员可见） -->
+            <div id="statsPanel" class="stats-panel" style="display:none;">
+                <div class="stats-header">
+                    <h3>📊 <span id="operatorName"></span> 的审核进度</h3>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">全量进度</div>
+                        <div class="stat-value" id="allProgress">0/0</div>
+                        <div class="stat-percent" id="allPercent">0%</div>
+                    </div>
+                    <div class="stat-box personal">
+                        <div class="stat-label">个人进度</div>
+                        <div class="stat-value" id="personalProgress">0/0</div>
+                        <div class="stat-percent" id="personalPercent">0%</div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 管理员面板（仅"窦"可见） -->
             <div id="adminPanel" class="admin-panel" style="display:none;">
                 <div class="admin-header">
                     <h3>🔧 管理员工具</h3>
                 </div>
-                <div class="admin-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">本周进度:</span>
-                        <span class="stat-value" id="adminProgress">0/0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">完成度:</span>
-                        <span class="stat-value" id="adminPercent">0%</span>
-                    </div>
-                </div>
                 <div class="admin-actions">
-                    <button id="finishWeekBtn" class="admin-btn finish-btn">✓ 完成本周并导出</button>
+                    <button id="exportBtn" class="admin-btn export-btn">📥 导出当前数据</button>
                     <label for="uploadFile" class="admin-btn upload-btn">📤 上传新Excel（开始新周期）</label>
                     <input type="file" id="uploadFile" accept=".xlsx" style="display:none;">
                 </div>
@@ -59,6 +74,15 @@
         </main>
         
         <div id="toast" class="toast"></div>
+        
+        <!-- 键盘操作说明 -->
+        <div class="keyboard-help">
+            <div class="help-title">⌨️ 键盘快捷操作</div>
+            <div class="help-item"><kbd>←</kbd> <kbd>→</kbd> 切换检查项</div>
+            <div class="help-item"><kbd>Enter</kbd> 标记合格</div>
+            <div class="help-item"><kbd>Space</kbd> 标记不合格</div>
+            <div class="help-hint">💡 标记不合格后输入理由，按回车确认</div>
+        </div>
     </div>
     
     <!-- 图片查看器模态框 -->

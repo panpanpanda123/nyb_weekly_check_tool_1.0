@@ -4,8 +4,9 @@ CSV Exporter Module
 """
 import csv
 from io import StringIO
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
+from database import get_session, StoreWhitelist
 
 
 class CSVExporter:
@@ -13,7 +14,7 @@ class CSVExporter:
     
     def __init__(self):
         """初始化CSV导出器"""
-        pass
+        self._whitelist_cache = None
     
     def export_reviews(self, reviews: List[Dict], original_data: List[Dict]) -> str:
         """
@@ -26,6 +27,9 @@ class CSVExporter:
         Returns:
             str: CSV格式的字符串内容（包含UTF-8 BOM）
         """
+        # 加载白名单数据到缓存
+        self._load_whitelist_cache()
+        
         # 合并原始数据和审核结果
         merged_data = self._merge_data(reviews, original_data)
         
@@ -34,6 +38,44 @@ class CSVExporter:
         
         # 添加UTF-8 BOM以支持Excel正确打开中文
         return '\ufeff' + csv_content
+    
+    def _load_whitelist_cache(self):
+        """从数据库加载白名单数据到缓存"""
+        if self._whitelist_cache is not None:
+            return
+        
+        session = get_session()
+        try:
+            stores = session.query(StoreWhitelist).all()
+            self._whitelist_cache = {
+                store.store_id: {
+                    'war_zone': store.war_zone or '',
+                    'province': store.province or '',
+                    'city': store.city or ''
+                }
+                for store in stores
+            }
+        finally:
+            session.close()
+    
+    def _get_store_location(self, store_id: str) -> Dict[str, str]:
+        """
+        根据门店ID获取战区、省份、城市信息
+        
+        Args:
+            store_id: 门店编号
+            
+        Returns:
+            Dict[str, str]: 包含war_zone, province, city的字典，不存在时为空字符串
+        """
+        if self._whitelist_cache is None:
+            self._load_whitelist_cache()
+        
+        return self._whitelist_cache.get(store_id, {
+            'war_zone': '',
+            'province': '',
+            'city': ''
+        })
     
     def _merge_data(self, reviews: List[Dict], original_data: List[Dict]) -> List[Dict]:
         """
@@ -57,9 +99,16 @@ class CSVExporter:
             
             # 如果有审核结果，则合并
             if review:
+                # 获取门店的战区、省份、城市信息
+                store_id = item.get('门店编号', '')
+                location = self._get_store_location(store_id)
+                
                 merged_item = {
                     '门店名称': item.get('门店名称', ''),
-                    '门店编号': item.get('门店编号', ''),
+                    '门店编号': store_id,
+                    '战区': location['war_zone'],
+                    '省份': location['province'],
+                    '城市': location['city'],
                     '所属区域': item.get('所属区域', ''),
                     '检查项名称': item.get('检查项名称', ''),
                     '检查项分类': item.get('检查项分类', ''),
@@ -89,10 +138,13 @@ class CSVExporter:
         # 使用StringIO作为内存中的文件对象
         output = StringIO()
         
-        # 定义CSV列
+        # 定义CSV列（增加战区、省份、城市）
         fieldnames = [
             '门店名称',
             '门店编号',
+            '战区',
+            '省份',
+            '城市',
             '所属区域',
             '检查项名称',
             '检查项分类',

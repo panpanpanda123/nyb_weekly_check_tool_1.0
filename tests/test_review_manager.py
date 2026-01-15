@@ -3,7 +3,7 @@
 Review Manager Tests
 """
 import pytest
-from review_manager import ReviewManager
+from review_manager_db import ReviewManager
 from datetime import datetime
 
 

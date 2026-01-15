@@ -7,29 +7,286 @@ let currentOperator = '全部';
 let displayedStores = new Set(); // 当前显示的门店
 let completedStores = []; // 已完成的门店列表
 let currentView = 'pending'; // 'pending' 或 'completed'
+let searchMode = false; // 是否处于搜索模式
+let searchKeyword = ''; // 搜索关键词
 const ITEMS_PER_PAGE = 10;
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadOperators();
-    loadItems();
-    loadReviews();
+// 键盘导航状态
+let keyboardNavEnabled = true; // 是否启用键盘导航
+let currentFocusIndex = 0; // 当前聚焦的卡片索引
+let visibleCards = []; // 当前可见的卡片元素
+
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🚀 页面加载开始...');
+    
+    // 按顺序加载数据
+    await loadOperators();
+    console.log('✅ 运营人员列表加载完成');
+    
+    await loadItems();  // 先加载检查项数据
+    console.log('✅ 检查项数据加载完成');
+    
+    await loadReviews();  // 再加载审核记录
+    console.log('✅ 审核记录加载完成');
+    
+    console.log('🎉 所有数据加载完成！');
     
     // 运营人员筛选事件
     document.getElementById('operatorFilter').addEventListener('change', function(e) {
         currentOperator = e.target.value;
         displayedStores.clear();
+        clearSearch(); // 切换运营人员时清除搜索
         loadItems();
+        updateStatsPanel();
         updateAdminPanel();
     });
     
     // 视图切换
-    document.getElementById('pendingTab').addEventListener('click', () => switchView('pending'));
-    document.getElementById('completedTab').addEventListener('click', () => switchView('completed'));
+    document.getElementById('pendingTab').addEventListener('click', () => {
+        clearSearch(); // 切换视图时清除搜索
+        switchView('pending');
+    });
+    document.getElementById('completedTab').addEventListener('click', () => {
+        clearSearch(); // 切换视图时清除搜索
+        switchView('completed');
+    });
+    
+    // 搜索功能
+    document.getElementById('searchBtn').addEventListener('click', performSearch);
+    document.getElementById('storeSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
     
     // 管理员按钮
-    document.getElementById('finishWeekBtn').addEventListener('click', finishWeek);
+    document.getElementById('exportBtn').addEventListener('click', exportCurrentData);
     document.getElementById('uploadFile').addEventListener('change', uploadNewFile);
+    
+    // 键盘导航
+    setupKeyboardNavigation();
 });
+
+/**
+ * 设置键盘导航
+ */
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', function(e) {
+        // 如果焦点在输入框或文本域，不处理键盘导航
+        const activeElement = document.activeElement;
+        if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'SELECT') {
+            return;
+        }
+        
+        // 更新可见卡片列表
+        updateVisibleCards();
+        
+        if (visibleCards.length === 0) return;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                moveFocus(-1);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                moveFocus(1);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                moveFocus(-1);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                moveFocus(1);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                markCurrentAsPass();
+                break;
+            case ' ':
+                e.preventDefault();
+                markCurrentAsFail();
+                break;
+        }
+    });
+}
+
+/**
+ * 更新可见卡片列表
+ */
+function updateVisibleCards() {
+    visibleCards = Array.from(document.querySelectorAll('.item-card'));
+    // 确保当前索引在有效范围内
+    if (currentFocusIndex >= visibleCards.length) {
+        currentFocusIndex = visibleCards.length - 1;
+    }
+    if (currentFocusIndex < 0 && visibleCards.length > 0) {
+        currentFocusIndex = 0;
+    }
+}
+
+/**
+ * 移动焦点
+ */
+function moveFocus(direction) {
+    if (visibleCards.length === 0) return;
+    
+    // 移除当前高亮
+    if (visibleCards[currentFocusIndex]) {
+        visibleCards[currentFocusIndex].classList.remove('keyboard-focus');
+    }
+    
+    // 计算新索引
+    currentFocusIndex += direction;
+    
+    // 循环处理
+    if (currentFocusIndex < 0) {
+        currentFocusIndex = visibleCards.length - 1;
+    } else if (currentFocusIndex >= visibleCards.length) {
+        currentFocusIndex = 0;
+    }
+    
+    // 添加新高亮
+    if (visibleCards[currentFocusIndex]) {
+        visibleCards[currentFocusIndex].classList.add('keyboard-focus');
+        // 滚动到可见区域
+        visibleCards[currentFocusIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+/**
+ * 标记当前项为合格
+ */
+function markCurrentAsPass() {
+    if (visibleCards.length === 0 || !visibleCards[currentFocusIndex]) return;
+    
+    const card = visibleCards[currentFocusIndex];
+    const itemId = card.dataset.itemId;
+    
+    if (itemId) {
+        submitReview(itemId, '合格');
+        // 完成后自动向右移动光标
+        setTimeout(() => {
+            updateVisibleCards();
+            if (visibleCards.length > 0) {
+                // 自动向右移动一格
+                moveFocus(1);
+            }
+        }, 100);
+    }
+}
+
+/**
+ * 标记当前项为不合格
+ */
+function markCurrentAsFail() {
+    if (visibleCards.length === 0 || !visibleCards[currentFocusIndex]) return;
+    
+    const card = visibleCards[currentFocusIndex];
+    const itemId = card.dataset.itemId;
+    
+    if (itemId) {
+        submitReview(itemId, '不合格');
+        // 不移动焦点，等待用户输入问题描述
+    }
+}
+
+/**
+ * 执行搜索
+ */
+function performSearch() {
+    const searchInput = document.getElementById('storeSearch');
+    const keyword = searchInput.value.trim();
+    
+    if (keyword === '') {
+        showToast('⚠️ 请输入门店编号或名称', 'error');
+        return;
+    }
+    
+    searchKeyword = keyword;
+    searchMode = true;
+    
+    // 精确搜索匹配的门店
+    const matchedItems = allItems.filter(item => {
+        const storeId = item['门店编号'].toString();
+        const storeName = item['门店名称'];
+        // 精确匹配：门店编号或门店名称完全相等
+        return storeId === keyword || storeName === keyword;
+    });
+    
+    if (matchedItems.length === 0) {
+        showToast('❌ 未找到匹配的门店（请输入完整的门店编号或名称）', 'error');
+        return;
+    }
+    
+    // 显示搜索结果
+    renderSearchResults(matchedItems);
+    
+    // 显示清除按钮
+    document.getElementById('clearSearchBtn').style.display = 'inline-block';
+    
+    // 切换到待审核视图
+    currentView = 'pending';
+    document.getElementById('pendingTab').classList.add('active');
+    document.getElementById('completedTab').classList.remove('active');
+}
+
+/**
+ * 清除搜索
+ */
+function clearSearch() {
+    searchMode = false;
+    searchKeyword = '';
+    document.getElementById('storeSearch').value = '';
+    document.getElementById('clearSearchBtn').style.display = 'none';
+    
+    // 重新渲染当前视图
+    if (currentView === 'pending') {
+        renderPendingItems();
+    } else {
+        renderCompletedStores();
+    }
+}
+
+/**
+ * 渲染搜索结果
+ */
+function renderSearchResults(items) {
+    const container = document.getElementById('itemsContainer');
+    container.innerHTML = '';
+    
+    // 按门店分组
+    const storeGroups = {};
+    items.forEach(item => {
+        const storeId = item['门店编号'];
+        if (!storeGroups[storeId]) {
+            storeGroups[storeId] = {
+                storeId: storeId,
+                storeName: item['门店名称'],
+                operator: item['负责运营'],
+                items: []
+            };
+        }
+        storeGroups[storeId].items.push(item);
+    });
+    
+    // 显示搜索结果标题
+    const resultHeader = document.createElement('div');
+    resultHeader.className = 'search-result-header';
+    const storeCount = Object.keys(storeGroups).length;
+    resultHeader.textContent = `🔍 搜索结果：找到 ${storeCount} 家门店，共 ${items.length} 个检查项`;
+    container.appendChild(resultHeader);
+    
+    // 渲染每个门店的检查项
+    Object.values(storeGroups).forEach(store => {
+        store.items.forEach(item => {
+            const card = createItemCard(item);
+            container.appendChild(card);
+        });
+    });
+}
 
 /**
  * 切换视图
@@ -80,6 +337,8 @@ async function loadItems() {
         const items = await response.json();
         allItems = items;
         
+        console.log(`📦 加载了 ${items.length} 个检查项`);
+        
         if (items.length === 0) {
             document.getElementById('itemsContainer').innerHTML = '<div class="loading"><p>暂无检查项数据</p></div>';
             document.getElementById('totalCount').textContent = `总计: 0`;
@@ -87,7 +346,7 @@ async function loadItems() {
         }
         
         document.getElementById('totalCount').textContent = `总计: ${items.length}`;
-        renderPendingItems();
+        // 不在这里渲染，等reviews加载完再渲染
         updateAdminPanel();
         
     } catch (error) {
@@ -101,19 +360,35 @@ async function loadItems() {
  */
 async function loadReviews() {
     try {
+        console.log('🔄 开始从数据库加载审核结果...');
         const response = await fetch('/api/reviews');
         const reviewList = await response.json();
+        
+        console.log(`✅ 成功加载 ${reviewList.length} 条审核记录`);
         
         reviews = {};
         reviewList.forEach(review => {
             reviews[review.item_id] = review;
         });
         
+        console.log(`📊 reviews对象中有 ${Object.keys(reviews).length} 条记录`);
+        console.log(`📦 allItems数组中有 ${allItems.length} 个检查项`);
+        
+        // 检查已完成的门店
         updateReviewCount();
         checkCompletedStores();
         
+        console.log(`✅ 识别到 ${completedStores.length} 家已完成的门店`);
+        
+        // 渲染页面
+        renderPendingItems();
+        updateStatsPanel();
+        
+        console.log('✅ 审核数据加载完成，页面已渲染');
+        
     } catch (error) {
-        console.error('加载审核结果失败:', error);
+        console.error('❌ 加载审核结果失败:', error);
+        showToast('❌ 加载审核数据失败，请刷新页面', 'error');
     }
 }
 
@@ -174,6 +449,11 @@ function checkCompletedStores() {
  * 渲染待审核检查项（分页）
  */
 function renderPendingItems() {
+    // 如果处于搜索模式，不执行正常渲染
+    if (searchMode) {
+        return;
+    }
+    
     const container = document.getElementById('itemsContainer');
     container.innerHTML = '';
     
@@ -224,6 +504,15 @@ function renderPendingItems() {
     });
     
     displayedStores = new Set(displayStoreIds);
+    
+    // 初始化键盘导航
+    setTimeout(() => {
+        updateVisibleCards();
+        currentFocusIndex = 0;
+        if (visibleCards.length > 0) {
+            visibleCards[0].classList.add('keyboard-focus');
+        }
+    }, 100);
 }
 
 /**
@@ -238,7 +527,18 @@ function renderCompletedStores() {
         return;
     }
     
-    completedStores.forEach(store => {
+    // 按当前运营人员筛选已完成门店
+    let filteredStores = completedStores;
+    if (currentOperator && currentOperator !== '全部') {
+        filteredStores = completedStores.filter(store => store.operator === currentOperator);
+    }
+    
+    if (filteredStores.length === 0) {
+        container.innerHTML = '<div class="loading"><p>暂无已完成的门店</p></div>';
+        return;
+    }
+    
+    filteredStores.forEach(store => {
         const card = createCompletedStoreCard(store);
         container.appendChild(card);
     });
@@ -746,6 +1046,14 @@ async function saveProblemNote(itemId, problemNote, closeAfterSave = false) {
                 }
                 
                 showToast('✓ 问题描述已保存', 'success');
+                
+                // 完成后自动向右移动光标
+                setTimeout(() => {
+                    updateVisibleCards();
+                    if (visibleCards.length > 0) {
+                        moveFocus(1);
+                    }
+                }, 100);
             }
             
             // 保存后重新检查门店是否完成（关键修复！）
@@ -807,8 +1115,18 @@ function checkStoreCompletion(storeId) {
             checkCompletedStores();
             if (currentView === 'pending') {
                 renderPendingItems();
+                // 门店完成后，光标自动回到最左侧（第一个卡片）
+                setTimeout(() => {
+                    updateVisibleCards();
+                    currentFocusIndex = 0;
+                    if (visibleCards.length > 0) {
+                        visibleCards[0].classList.add('keyboard-focus');
+                        visibleCards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
             }
             showToast(`🎉 门店 ${storeId} 已完成审核！`, 'success');
+            updateStatsPanel();
             updateAdminPanel();
         }, 500);
     } else {
@@ -901,51 +1219,70 @@ async function exportReviews() {
 }
 
 /**
- * 更新管理员面板
+ * 更新统计面板（所有运营人员都显示）
+ */
+async function updateStatsPanel() {
+    const statsPanel = document.getElementById('statsPanel');
+    
+    console.log('📊 更新统计面板，当前运营人员:', currentOperator);
+    console.log('📊 当前reviews数量:', Object.keys(reviews).length);
+    
+    // 所有运营人员都显示统计面板
+    if (currentOperator && currentOperator !== '全部') {
+        statsPanel.style.display = 'block';
+        
+        try {
+            // 获取全量统计
+            const allStatsResponse = await fetch('/api/stats');
+            const allStats = await allStatsResponse.json();
+            console.log('📊 全量统计:', allStats);
+            
+            // 获取个人统计
+            const personalStatsResponse = await fetch(`/api/stats?operator=${encodeURIComponent(currentOperator)}`);
+            const personalStats = await personalStatsResponse.json();
+            console.log('📊 个人统计:', personalStats);
+            
+            // 显示全量统计
+            document.getElementById('allProgress').textContent = `${allStats.reviewed}/${allStats.total}`;
+            document.getElementById('allPercent').textContent = `${allStats.percentage}%`;
+            
+            // 显示个人统计
+            document.getElementById('personalProgress').textContent = `${personalStats.reviewed}/${personalStats.total}`;
+            document.getElementById('personalPercent').textContent = `${personalStats.percentage}%`;
+            
+            // 显示运营人员名称
+            document.getElementById('operatorName').textContent = currentOperator;
+            
+            console.log('✅ 统计面板更新完成');
+            
+        } catch (error) {
+            console.error('❌ 获取统计信息失败:', error);
+        }
+    } else {
+        statsPanel.style.display = 'none';
+        console.log('📊 统计面板隐藏（全部运营人员）');
+    }
+}
+
+/**
+ * 更新管理员面板（仅窦显示）
  */
 async function updateAdminPanel() {
     const adminPanel = document.getElementById('adminPanel');
     
     if (currentOperator === '窦') {
         adminPanel.style.display = 'block';
-        
-        try {
-            // 从后端API获取统计数据
-            let url = '/api/stats';
-            if (currentOperator && currentOperator !== '全部') {
-                url += `?operator=${encodeURIComponent(currentOperator)}`;
-            }
-            
-            const response = await fetch(url);
-            const stats = await response.json();
-            
-            document.getElementById('adminProgress').textContent = `${stats.reviewed}/${stats.total}`;
-            document.getElementById('adminPercent').textContent = `${stats.percentage}%`;
-        } catch (error) {
-            console.error('获取统计信息失败:', error);
-            // 降级方案：使用本地数据
-            const totalItems = allItems.length;
-            const reviewedItems = Object.keys(reviews).length;
-            const percentage = totalItems > 0 ? Math.round((reviewedItems / totalItems) * 100) : 0;
-            
-            document.getElementById('adminProgress').textContent = `${reviewedItems}/${totalItems}`;
-            document.getElementById('adminPercent').textContent = `${percentage}%`;
-        }
     } else {
         adminPanel.style.display = 'none';
     }
 }
 
 /**
- * 完成本周（导出CSV）
+ * 导出当前数据（不改变任何状态）
  */
-async function finishWeek() {
+async function exportCurrentData() {
     if (Object.keys(reviews).length === 0) {
         showToast('⚠️ 暂无审核结果可导出', 'error');
-        return;
-    }
-    
-    if (!confirm('确认完成本周审核并导出结果吗？')) {
         return;
     }
     

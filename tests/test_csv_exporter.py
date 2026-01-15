@@ -3,7 +3,11 @@ CSV导出器测试
 CSV Exporter Tests
 """
 import pytest
+import csv
+from io import StringIO
+from hypothesis import given, strategies as st, settings
 from csv_exporter import CSVExporter
+from database import get_session, StoreWhitelist, Base, engine
 
 
 class TestCSVExporter:
@@ -97,12 +101,16 @@ class TestCSVExporter:
             {
                 '门店名称': '测试门店',
                 '门店编号': '1',
+                '战区': '测试战区',
+                '省份': '测试省份',
+                '城市': '测试城市',
                 '所属区域': '测试区域',
                 '检查项名称': '测试项',
                 '检查项分类': '周清',
                 '负责运营': '张三',
                 '标准图': 'http://test.com/img.jpg',
                 '审核结果': '合格',
+                '问题描述': '',
                 '审核时间': '2026-01-10 10:00:00'
             }
         ]
@@ -113,6 +121,9 @@ class TestCSVExporter:
         lines = csv_content.strip().split('\n')
         assert len(lines) == 2  # 表头 + 1行数据
         assert '门店名称' in lines[0]
+        assert '战区' in lines[0]
+        assert '省份' in lines[0]
+        assert '城市' in lines[0]
         
         # 验证包含数据
         assert '测试门店' in lines[1]
@@ -137,16 +148,20 @@ class TestCSVExporter:
         # 获取表头
         header = csv_content.split('\n')[0]
         
-        # 验证列顺序
+        # 验证列顺序（包含新增的战区、省份、城市字段）
         expected_columns = [
             '门店名称',
             '门店编号',
+            '战区',
+            '省份',
+            '城市',
             '所属区域',
             '检查项名称',
             '检查项分类',
             '负责运营',
             '标准图',
             '审核结果',
+            '问题描述',
             '审核时间'
         ]
         
@@ -166,3 +181,215 @@ class TestCSVExporter:
         # 验证包含中文字符
         assert '门店' in csv_content
         assert '合格' in csv_content
+
+
+
+class TestCSVExporterFieldCompleteness:
+    """
+    **Feature: review-result-viewer, Property 7: CSV导出字段完整性**
+    **Validates: Requirements 5.1, 5.2, 5.3**
+    
+    属性测试：CSV导出字段完整性
+    *For any* 导出的审核结果CSV，每行数据应包含战区、省份、城市字段；
+    当门店在白名单中存在时，这些字段应与白名单数据一致；
+    当门店不存在时，这些字段应为空。
+    """
+    
+    def setup_method(self):
+        """每个测试方法前的设置"""
+        # 确保数据库表存在
+        Base.metadata.create_all(engine)
+    
+    def teardown_method(self):
+        """每个测试方法后的清理"""
+        # 清理测试数据
+        session = get_session()
+        try:
+            session.query(StoreWhitelist).delete()
+            session.commit()
+        finally:
+            session.close()
+    
+    # 生成有效的门店ID
+    store_id_strategy = st.text(
+        alphabet=st.characters(whitelist_categories=('N',)),
+        min_size=1,
+        max_size=10
+    ).filter(lambda x: x.strip() != '')
+    
+    # 生成有效的字符串
+    valid_string_strategy = st.text(
+        alphabet=st.characters(whitelist_categories=('L', 'N')),
+        min_size=1,
+        max_size=20
+    ).filter(lambda x: x.strip() != '')
+    
+    @given(
+        store_id=store_id_strategy,
+        war_zone=valid_string_strategy,
+        province=valid_string_strategy,
+        city=valid_string_strategy,
+        store_name=valid_string_strategy,
+        item_name=valid_string_strategy,
+        review_result=st.sampled_from(['合格', '不合格'])
+    )
+    @settings(max_examples=100)
+    def test_csv_export_includes_location_fields_for_existing_stores(
+        self,
+        store_id,
+        war_zone,
+        province,
+        city,
+        store_name,
+        item_name,
+        review_result
+    ):
+        """
+        属性测试：当门店在白名单中存在时，CSV导出应包含正确的战区、省份、城市字段
+        
+        **Feature: review-result-viewer, Property 7: CSV导出字段完整性**
+        **Validates: Requirements 5.1, 5.2**
+        """
+        session = get_session()
+        try:
+            # 清理可能存在的同ID记录
+            session.query(StoreWhitelist).filter_by(store_id=store_id).delete()
+            session.commit()
+            
+            # 在白名单中添加门店
+            whitelist_store = StoreWhitelist(
+                store_id=store_id,
+                war_zone=war_zone,
+                province=province,
+                city=city,
+                store_name=store_name
+            )
+            session.add(whitelist_store)
+            session.commit()
+            
+            # 创建导出器
+            exporter = CSVExporter()
+            
+            # 准备测试数据
+            item_id = f"{store_id}_{item_name}"
+            original_data = [{
+                'id': item_id,
+                '门店名称': store_name,
+                '门店编号': store_id,
+                '所属区域': '测试区域',
+                '检查项名称': item_name,
+                '检查项分类': '周清',
+                '负责运营': '测试运营',
+                '标准图': 'http://test.com/img.jpg'
+            }]
+            
+            reviews = [{
+                'item_id': item_id,
+                '审核结果': review_result,
+                '问题描述': '测试问题' if review_result == '不合格' else '',
+                '审核时间': '2026-01-15 10:00:00'
+            }]
+            
+            # 导出CSV
+            csv_content = exporter.export_reviews(reviews, original_data)
+            
+            # 移除BOM并解析CSV
+            csv_content = csv_content.lstrip('\ufeff')
+            csv_reader = csv.DictReader(StringIO(csv_content))
+            rows = list(csv_reader)
+            
+            # 验证：应该有一行数据
+            assert len(rows) == 1, "应该导出一行数据"
+            
+            row = rows[0]
+            
+            # 验证：CSV应包含战区、省份、城市字段
+            assert '战区' in row, "CSV应包含战区字段"
+            assert '省份' in row, "CSV应包含省份字段"
+            assert '城市' in row, "CSV应包含城市字段"
+            
+            # 验证：字段值应与白名单一致
+            assert row['战区'] == war_zone, f"战区应为 {war_zone}，实际为 {row['战区']}"
+            assert row['省份'] == province, f"省份应为 {province}，实际为 {row['省份']}"
+            assert row['城市'] == city, f"城市应为 {city}，实际为 {row['城市']}"
+            
+        finally:
+            # 清理测试数据
+            session.query(StoreWhitelist).filter_by(store_id=store_id).delete()
+            session.commit()
+            session.close()
+    
+    @given(
+        store_id=store_id_strategy,
+        store_name=valid_string_strategy,
+        item_name=valid_string_strategy,
+        review_result=st.sampled_from(['合格', '不合格'])
+    )
+    @settings(max_examples=100)
+    def test_csv_export_empty_location_fields_for_nonexistent_stores(
+        self,
+        store_id,
+        store_name,
+        item_name,
+        review_result
+    ):
+        """
+        属性测试：当门店不在白名单中时，CSV导出的战区、省份、城市字段应为空
+        
+        **Feature: review-result-viewer, Property 7: CSV导出字段完整性**
+        **Validates: Requirements 5.3**
+        """
+        session = get_session()
+        try:
+            # 确保门店不在白名单中
+            session.query(StoreWhitelist).filter_by(store_id=store_id).delete()
+            session.commit()
+            
+            # 创建导出器
+            exporter = CSVExporter()
+            
+            # 准备测试数据
+            item_id = f"{store_id}_{item_name}"
+            original_data = [{
+                'id': item_id,
+                '门店名称': store_name,
+                '门店编号': store_id,
+                '所属区域': '测试区域',
+                '检查项名称': item_name,
+                '检查项分类': '周清',
+                '负责运营': '测试运营',
+                '标准图': 'http://test.com/img.jpg'
+            }]
+            
+            reviews = [{
+                'item_id': item_id,
+                '审核结果': review_result,
+                '问题描述': '测试问题' if review_result == '不合格' else '',
+                '审核时间': '2026-01-15 10:00:00'
+            }]
+            
+            # 导出CSV
+            csv_content = exporter.export_reviews(reviews, original_data)
+            
+            # 移除BOM并解析CSV
+            csv_content = csv_content.lstrip('\ufeff')
+            csv_reader = csv.DictReader(StringIO(csv_content))
+            rows = list(csv_reader)
+            
+            # 验证：应该有一行数据
+            assert len(rows) == 1, "应该导出一行数据"
+            
+            row = rows[0]
+            
+            # 验证：CSV应包含战区、省份、城市字段
+            assert '战区' in row, "CSV应包含战区字段"
+            assert '省份' in row, "CSV应包含省份字段"
+            assert '城市' in row, "CSV应包含城市字段"
+            
+            # 验证：字段值应为空
+            assert row['战区'] == '', f"战区应为空，实际为 {row['战区']}"
+            assert row['省份'] == '', f"省份应为空，实际为 {row['省份']}"
+            assert row['城市'] == '', f"城市应为空，实际为 {row['城市']}"
+            
+        finally:
+            session.close()
