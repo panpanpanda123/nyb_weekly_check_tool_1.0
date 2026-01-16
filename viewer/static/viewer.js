@@ -324,11 +324,11 @@ async function loadSearchResults() {
             
             updateResultCount(data.data.total_count, data.data.count);
             
-            // 显示加载更多按钮
+            // 显示分页按钮
             if (data.data.has_more) {
-                showLoadMoreButton();
+                showPaginationButton();
             } else {
-                hideLoadMoreButton();
+                hidePaginationButton();
             }
             
             if (data.data.total_count === 0) {
@@ -420,7 +420,7 @@ function clearFilters() {
     // 显示欢迎消息
     showWelcomeMessage();
     updateResultCount(0, 0);
-    hideLoadMoreButton();
+    hidePaginationButton();
     
     showToast('已清除所有筛选条件', 'info');
 }
@@ -478,7 +478,7 @@ function appendResults(results) {
 /**
  * 显示分页按钮
  */
-function showLoadMoreButton() {
+function showPaginationButton() {
     const container = document.getElementById('loadMoreContainer');
     if (container) {
         container.innerHTML = `
@@ -493,7 +493,7 @@ function showLoadMoreButton() {
 /**
  * 隐藏分页按钮
  */
-function hideLoadMoreButton() {
+function hidePaginationButton() {
     const container = document.getElementById('loadMoreContainer');
     if (container) {
         container.innerHTML = '<div class="no-more-results">✓ 已加载全部结果（第 ' + currentPage + ' / ' + totalPages + ' 页）</div>';
