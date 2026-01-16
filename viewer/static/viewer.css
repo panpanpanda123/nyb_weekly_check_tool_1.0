@@ -760,56 +760,110 @@ h1 {
     }
     
     .container {
-        padding: 15px;
+        padding: 10px;
     }
     
     /* 头部优化 */
     header {
-        padding: 20px 15px;
+        padding: 15px 12px;
     }
     
     h1 {
-        font-size: 20px;
-        margin-bottom: 15px;
+        font-size: 18px;
+        margin-bottom: 12px;
+    }
+    
+    /* 视图切换标签优化 */
+    .view-tabs {
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        flex: 1;
+        min-width: 100px;
+    }
+    
+    .tab-btn.clear-btn {
+        flex: 1 1 100%;
+        margin-left: 0 !important;
+    }
+    
+    .toggle-label {
+        padding: 8px 12px;
+        font-size: 12px;
+        flex: 1 1 100%;
+    }
+    
+    /* 搜索区域优化 */
+    .search-section {
+        flex-direction: column;
+        padding: 10px;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    
+    .search-section label {
+        font-size: 12px;
+    }
+    
+    .store-search {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .search-btn,
+    .clear-search-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 14px;
     }
     
     /* 筛选区域优化 */
     .filter-section {
-        padding: 15px;
+        padding: 10px;
     }
     
     .filter-row {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 10px;
+    }
+    
+    .filter-item {
+        gap: 4px;
     }
     
     .filter-item label {
-        font-size: 13px;
+        font-size: 12px;
     }
     
     .filter-select {
         padding: 10px 12px;
-        font-size: 15px;
-        /* 增大触摸区域 */
+        font-size: 14px;
     }
     
     .filter-actions {
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+        gap: 8px;
     }
     
     .search-btn,
     .clear-btn {
         width: 100%;
         padding: 12px 20px;
-        font-size: 15px;
+        font-size: 14px;
     }
     
     .result-count {
         margin-left: 0;
         text-align: center;
         padding: 10px 16px;
+        font-size: 13px;
     }
     
     /* 结果展示区域优化 */
