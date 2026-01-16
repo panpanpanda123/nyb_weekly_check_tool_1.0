@@ -23,6 +23,7 @@ let currentPage = 1;
 let totalPages = 1;
 let isLoading = false;
 let processedItems = new Set();  // 记录已处理的项目ID
+let currentView = 'pending';  // 当前视图：pending 或 completed
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -209,6 +210,30 @@ function bindEvents() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             closeImageModal();
+        }
+    });
+    
+    // 视图切换
+    document.getElementById('pendingTab').addEventListener('click', function() {
+        switchView('pending');
+    });
+    
+    document.getElementById('completedTab').addEventListener('click', function() {
+        switchView('completed');
+    });
+    
+    // 清除已完成记录
+    document.getElementById('clearProcessedBtn').addEventListener('click', function() {
+        if (confirm('确定要清除所有已完成记录吗？')) {
+            clearProcessedItems();
+            if (currentView === 'completed') {
+                renderCompletedView();
+            } else {
+                // 刷新待处理视图
+                if (searchResults.length > 0) {
+                    renderResults(searchResults);
+                }
+            }
         }
     });
 }
@@ -426,17 +451,218 @@ function clearFilters() {
 }
 
 /**
+ * 切换视图
+ */
+function switchView(view) {
+    currentView = view;
+    
+    // 更新标签样式
+    document.getElementById('pendingTab').classList.toggle('active', view === 'pending');
+    document.getElementById('completedTab').classList.toggle('active', view === 'completed');
+    
+    if (view === 'pending') {
+        // 显示待处理视图
+        if (searchResults.length > 0) {
+            renderResults(searchResults);
+        } else {
+            showWelcomeMessage();
+        }
+    } else {
+        // 显示已完成视图
+        renderCompletedView();
+    }
+}
+
+/**
+ * 渲染已完成视图
+ */
+function renderCompletedView() {
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = '';
+    
+    // 获取已完成的项目
+    const completedResults = searchResults.filter(r => processedItems.has(r.id));
+    
+    if (completedResults.length === 0) {
+        container.innerHTML = `
+            <div class="empty-results">
+                <div class="empty-results-icon">📋</div>
+                <h3>暂无已完成项目</h3>
+                <p>标记为"已处理"的项目会显示在这里</p>
+            </div>
+        `;
+        return;
+    }
+    
+    completedResults.forEach(result => {
+        const card = createCompletedCard(result);
+        container.appendChild(card);
+    });
+}
+
+/**
+ * 创建已完成卡片（不显示"已处理"按钮）
+ */
+function createCompletedCard(result) {
+    const card = document.createElement('div');
+    card.className = 'result-card completed-card';
+    card.dataset.resultId = result.id;
+    
+    const imageUrl = result.image_url || '';
+    const reviewResult = result.review_result || '';
+    const problemNote = result.problem_note || '';
+    
+    card.innerHTML = `
+        <div class="card-header">
+            <div class="store-info">
+                <div class="store-name">${escapeHtml(result.store_name)}</div>
+                <div class="store-details">
+                    <span>门店编号: ${escapeHtml(result.store_id)}</span>
+                    <span>|</span>
+                    <span>战区: ${escapeHtml(result.war_zone || '-')}</span>
+                    <span>|</span>
+                    <span>省份: ${escapeHtml(result.province || '-')}</span>
+                    <span>|</span>
+                    <span>城市: ${escapeHtml(result.city || '-')}</span>
+                </div>
+            </div>
+            <div class="item-name">📋 ${escapeHtml(result.item_name)}</div>
+        </div>
+        <div class="card-body">
+            <div class="image-container clickable-image">
+                ${imageUrl ? 
+                    `<img alt="${escapeHtml(result.item_name)}" loading="lazy" referrerpolicy="no-referrer" data-retry="0">
+                     <div class="image-loading">⏳ 加载中...</div>` :
+                    '<div class="image-placeholder">📷 暂无图片</div>'
+                }
+            </div>
+            <div class="review-status ${reviewResult === '合格' ? 'pass' : 'fail'}">
+                <span class="status-icon">${reviewResult === '合格' ? '✓' : '✗'}</span>
+                <span class="status-text">${reviewResult === '合格' ? '合格' : '不合格'} (已完成)</span>
+                <div class="action-buttons">
+                    ${reviewResult === '不合格' ? `
+                        <button class="copy-btn" title="一键复制问题信息">
+                            📋 复制
+                        </button>
+                    ` : ''}
+                    <button class="restore-btn" title="恢复到待处理">
+                        ↩️ 恢复
+                    </button>
+                </div>
+            </div>
+            ${reviewResult === '不合格' && problemNote ? `
+                <div class="problem-note">
+                    <div class="problem-label">❗ 问题描述:</div>
+                    <div class="problem-text">${escapeHtml(problemNote)}</div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    // 设置图片
+    if (imageUrl) {
+        const imageContainer = card.querySelector('.image-container');
+        const img = imageContainer.querySelector('img');
+        const loadingDiv = imageContainer.querySelector('.image-loading');
+        
+        if (img) {
+            img.onload = function() {
+                if (loadingDiv) loadingDiv.style.display = 'none';
+            };
+            
+            img.onerror = function() {
+                handleImageErrorWithRetry(this, imageUrl, loadingDiv);
+            };
+            
+            img.src = imageUrl;
+        }
+        
+        imageContainer.onclick = function() {
+            openImageModal(imageUrl, result.store_name + ' - ' + result.item_name);
+        };
+    }
+    
+    // 绑定复制按钮
+    const copyBtn = card.querySelector('.copy-btn');
+    if (copyBtn) {
+        copyBtn.onclick = function(e) {
+            e.stopPropagation();
+            copyProblemInfo(result);
+        };
+    }
+    
+    // 绑定恢复按钮
+    const restoreBtn = card.querySelector('.restore-btn');
+    if (restoreBtn) {
+        restoreBtn.onclick = function(e) {
+            e.stopPropagation();
+            restoreItem(result.id, card);
+        };
+    }
+    
+    return card;
+}
+
+/**
+ * 恢复项目到待处理
+ */
+function restoreItem(resultId, cardElement) {
+    try {
+        // 从已处理列表移除
+        processedItems.delete(resultId);
+        
+        // 保存到localStorage
+        localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
+        
+        // 添加淡出动画
+        cardElement.style.transition = 'opacity 0.3s, transform 0.3s';
+        cardElement.style.opacity = '0';
+        cardElement.style.transform = 'scale(0.9)';
+        
+        setTimeout(() => {
+            cardElement.remove();
+            showToast('✓ 已恢复到待处理', 'success');
+            
+            // 如果已完成列表为空，显示提示
+            const remainingCards = document.querySelectorAll('.completed-card').length;
+            if (remainingCards === 0) {
+                renderCompletedView();
+            }
+        }, 300);
+        
+    } catch (error) {
+        console.error('恢复失败:', error);
+        showToast('✗ 恢复失败', 'error');
+    }
+}
+
+/**
+ * 渲染搜索结果
+ */
+/**
  * 渲染搜索结果
  */
 function renderResults(results) {
     const container = document.getElementById('resultsContainer');
     container.innerHTML = '';
     
-    // 过滤掉已处理的项目
-    const unprocessedResults = results.filter(r => !processedItems.has(r.id));
+    // 待处理视图：只显示未处理的项目
+    const unprocessedResults = currentView === 'pending' 
+        ? results.filter(r => !processedItems.has(r.id))
+        : results;
     
     if (unprocessedResults.length === 0) {
-        showEmptyResults();
+        if (currentView === 'pending') {
+            container.innerHTML = `
+                <div class="empty-results">
+                    <div class="empty-results-icon">🎉</div>
+                    <h3>当前筛选条件下的项目已全部处理完成</h3>
+                    <p>可以切换到"已完成列表"查看，或者清除筛选条件查看其他项目</p>
+                </div>
+            `;
+        } else {
+            showEmptyResults();
+        }
         return;
     }
     
@@ -461,8 +687,10 @@ function appendResults(results) {
     const container = document.getElementById('resultsContainer');
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     
-    // 过滤掉已处理的项目
-    const unprocessedResults = results.filter(r => !processedItems.has(r.id));
+    // 待处理视图：只显示未处理的项目
+    const unprocessedResults = currentView === 'pending'
+        ? results.filter(r => !processedItems.has(r.id))
+        : results;
     
     unprocessedResults.forEach(result => {
         const card = createResultCard(result);
