@@ -236,6 +236,39 @@ function bindEvents() {
             }
         }
     });
+    
+    // 显示合格项开关
+    document.getElementById('showQualifiedToggle').addEventListener('change', function(e) {
+        const showQualified = e.target.checked;
+        
+        if (showQualified) {
+            // 从已完成列表中移除所有合格项
+            searchResults.forEach(result => {
+                if (result.review_result === '合格') {
+                    processedItems.delete(result.id);
+                }
+            });
+        } else {
+            // 将所有合格项标记为已完成
+            searchResults.forEach(result => {
+                if (result.review_result === '合格') {
+                    processedItems.add(result.id);
+                }
+            });
+        }
+        
+        // 保存到localStorage
+        localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
+        
+        // 刷新当前视图
+        if (currentView === 'pending') {
+            renderResults(searchResults);
+        } else {
+            renderCompletedView();
+        }
+        
+        showToast(showQualified ? '✓ 已显示合格项' : '✓ 已隐藏合格项', 'success');
+    });
 }
 
 /**
@@ -337,6 +370,16 @@ async function loadSearchResults() {
             const results = data.data.results;
             totalPages = data.data.total_pages;
             
+            // 自动标记合格项为已完成
+            results.forEach(result => {
+                if (result.review_result === '合格' && !processedItems.has(result.id)) {
+                    processedItems.add(result.id);
+                }
+            });
+            
+            // 保存到localStorage
+            localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
+            
             if (currentPage === 1) {
                 // 第一页，替换所有结果
                 searchResults = results;
@@ -359,7 +402,8 @@ async function loadSearchResults() {
             if (data.data.total_count === 0) {
                 showToast('未找到符合条件的审核结果', 'info');
             } else if (currentPage === 1) {
-                showToast(`找到 ${data.data.total_count} 条审核结果`, 'success');
+                const unqualifiedCount = results.filter(r => r.review_result === '不合格').length;
+                showToast(`找到 ${data.data.total_count} 条结果，其中 ${unqualifiedCount} 条不合格`, 'success');
             }
         } else {
             showToast('搜索失败: ' + data.error, 'error');
@@ -480,7 +524,7 @@ function renderCompletedView() {
     const container = document.getElementById('resultsContainer');
     container.innerHTML = '';
     
-    // 获取已完成的项目
+    // 获取所有已完成的项目（从所有搜索结果中筛选，不只是当前页）
     const completedResults = searchResults.filter(r => processedItems.has(r.id));
     
     if (completedResults.length === 0) {
@@ -493,6 +537,16 @@ function renderCompletedView() {
         `;
         return;
     }
+    
+    // 显示统计信息
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'completed-stats';
+    statsDiv.innerHTML = `
+        <div class="stats-info">
+            📊 已完成项目：${completedResults.length} 条
+        </div>
+    `;
+    container.appendChild(statsDiv);
     
     completedResults.forEach(result => {
         const card = createCompletedCard(result);
@@ -651,15 +705,24 @@ function renderResults(results) {
         ? results.filter(r => !processedItems.has(r.id))
         : results;
     
+    // 先创建分页按钮容器（无论有没有结果都要创建）
+    const loadMoreContainer = document.createElement('div');
+    loadMoreContainer.id = 'loadMoreContainer';
+    loadMoreContainer.style.gridColumn = '1 / -1';
+    loadMoreContainer.style.textAlign = 'center';
+    loadMoreContainer.style.padding = '20px';
+    
     if (unprocessedResults.length === 0) {
         if (currentView === 'pending') {
             container.innerHTML = `
                 <div class="empty-results">
                     <div class="empty-results-icon">🎉</div>
-                    <h3>当前筛选条件下的项目已全部处理完成</h3>
-                    <p>可以切换到"已完成列表"查看，或者清除筛选条件查看其他项目</p>
+                    <h3>当前页的项目已全部处理完成</h3>
+                    <p>点击"下一页"继续查看更多项目</p>
                 </div>
             `;
+            // 即使没有结果，也要添加分页容器
+            container.appendChild(loadMoreContainer);
         } else {
             showEmptyResults();
         }
@@ -672,11 +735,6 @@ function renderResults(results) {
     });
     
     // 添加分页按钮容器
-    const loadMoreContainer = document.createElement('div');
-    loadMoreContainer.id = 'loadMoreContainer';
-    loadMoreContainer.style.gridColumn = '1 / -1';
-    loadMoreContainer.style.textAlign = 'center';
-    loadMoreContainer.style.padding = '20px';
     container.appendChild(loadMoreContainer);
 }
 
@@ -1045,21 +1103,33 @@ async function markAsProcessed(resultId, cardElement) {
         cardElement.style.transform = 'scale(0.9)';
         
         // 等待动画完成后移除卡片
-        setTimeout(async () => {
+        setTimeout(() => {
             cardElement.remove();
             
             // 检查当前页是否还有卡片
             const remainingCards = document.querySelectorAll('.result-card').length;
             
-            if (remainingCards === 0 && currentPage < totalPages) {
-                // 当前页没有卡片了，自动加载下一页
-                showToast('✓ 已标记为已处理，正在加载下一页...', 'success');
-                currentPage++;
-                await loadSearchResults();
-            } else if (remainingCards === 0 && currentPage >= totalPages) {
-                // 所有结果都处理完了
-                showToast('🎉 所有结果已处理完毕！', 'success');
-                showWelcomeMessage();
+            if (remainingCards === 0) {
+                // 当前页没有卡片了，显示提示
+                const container = document.getElementById('resultsContainer');
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-results';
+                emptyDiv.style.gridColumn = '1 / -1';
+                emptyDiv.innerHTML = `
+                    <div class="empty-results-icon">🎉</div>
+                    <h3>当前页的项目已全部处理完成</h3>
+                    <p>点击"下一页"继续查看更多项目</p>
+                `;
+                
+                // 在分页容器之前插入
+                const paginationContainer = document.getElementById('loadMoreContainer');
+                if (paginationContainer) {
+                    container.insertBefore(emptyDiv, paginationContainer);
+                } else {
+                    container.appendChild(emptyDiv);
+                }
+                
+                showToast('✓ 当前页已全部处理完成', 'success');
             } else {
                 showToast('✓ 已标记为已处理', 'success');
             }

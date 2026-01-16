@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>审核结果展示系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260116-3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260116-4">
 </head>
 <body>
     <div class="container">
@@ -13,8 +13,12 @@
             
             <!-- 视图切换标签 -->
             <div class="view-tabs">
-                <button id="pendingTab" class="tab-btn active">📝 待处理</button>
+                <button id="pendingTab" class="tab-btn active">📝 待处理 (不合格)</button>
                 <button id="completedTab" class="tab-btn">✓ 已完成列表</button>
+                <label class="toggle-label">
+                    <input type="checkbox" id="showQualifiedToggle">
+                    <span>显示合格项</span>
+                </label>
                 <button id="clearProcessedBtn" class="tab-btn clear-btn" style="margin-left: auto;">🗑️ 清除已完成记录</button>
             </div>
             
@@ -93,6 +97,6 @@
     <!-- Toast 提示 -->
     <div id="toast" class="toast"></div>
     
-    <script src="{{ url_for('static', filename='viewer.js') }}?v=20260116-3"></script>
+    <script src="{{ url_for('static', filename='viewer.js') }}?v=20260116-5"></script>
 </body>
 </html>
