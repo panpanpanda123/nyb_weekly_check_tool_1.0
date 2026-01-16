@@ -480,6 +480,7 @@ function appendResults(results) {
  */
 function showPaginationButton() {
     const container = document.getElementById('loadMoreContainer');
+    console.log('显示分页按钮:', container, 'currentPage:', currentPage, 'totalPages:', totalPages);
     if (container) {
         container.innerHTML = `
             <div class="pagination-info">第 ${currentPage} / ${totalPages} 页</div>
@@ -487,6 +488,8 @@ function showPaginationButton() {
                 ${isLoading ? '⏳ 加载中...' : '下一页 →'}
             </button>
         `;
+    } else {
+        console.error('找不到分页容器！');
     }
 }
 
@@ -495,6 +498,7 @@ function showPaginationButton() {
  */
 function hidePaginationButton() {
     const container = document.getElementById('loadMoreContainer');
+    console.log('隐藏分页按钮:', container, 'currentPage:', currentPage, 'totalPages:', totalPages);
     if (container) {
         container.innerHTML = '<div class="no-more-results">✓ 已加载全部结果（第 ' + currentPage + ' / ' + totalPages + ' 页）</div>';
     }
