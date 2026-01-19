@@ -5,7 +5,7 @@ let filterOptions = {
     war_zones: [],
     provinces: [],
     cities: [],
-    store_tags: [],
+    operators: [],
     review_results: []
 };
 
@@ -13,7 +13,7 @@ let currentFilters = {
     war_zone: '',
     province: '',
     city: '',
-    store_tag: '',
+    operator: '',
     review_result: '',
     store_search: ''
 };
@@ -67,8 +67,8 @@ async function loadFilterOptions() {
             // 填充战区下拉菜单
             populateSelect('warZoneFilter', filterOptions.war_zones);
             
-            // 填充门店标签下拉菜单
-            populateSelect('storeTagFilter', filterOptions.store_tags);
+            // 填充运营下拉菜单
+            populateSelect('operatorFilter', filterOptions.operators);
             
             // 填充是否合格下拉菜单
             populateSelect('reviewResultFilter', filterOptions.review_results);
@@ -190,9 +190,9 @@ function bindEvents() {
         currentFilters.city = e.target.value;
     });
     
-    // 门店标签选择变化
-    document.getElementById('storeTagFilter').addEventListener('change', function(e) {
-        currentFilters.store_tag = e.target.value;
+    // 运营选择变化
+    document.getElementById('operatorFilter').addEventListener('change', function(e) {
+        currentFilters.operator = e.target.value;
     });
     
     // 是否合格选择变化
@@ -357,7 +357,7 @@ async function loadSearchResults() {
         if (currentFilters.war_zone) params.append('war_zone', currentFilters.war_zone);
         if (currentFilters.province) params.append('province', currentFilters.province);
         if (currentFilters.city) params.append('city', currentFilters.city);
-        if (currentFilters.store_tag) params.append('store_tag', currentFilters.store_tag);
+        if (currentFilters.operator) params.append('operator', currentFilters.operator);
         if (currentFilters.review_result) params.append('review_result', currentFilters.review_result);
         if (currentFilters.store_search) params.append('store_search', currentFilters.store_search);
         params.append('page', currentPage);
@@ -469,7 +469,7 @@ function clearFilters() {
         war_zone: '',
         province: '',
         city: '',
-        store_tag: '',
+        operator: '',
         review_result: '',
         store_search: ''
     };
@@ -482,7 +482,7 @@ function clearFilters() {
     document.getElementById('warZoneFilter').value = '';
     document.getElementById('provinceFilter').value = '';
     document.getElementById('cityFilter').value = '';
-    document.getElementById('storeTagFilter').value = '';
+    document.getElementById('operatorFilter').value = '';
     document.getElementById('reviewResultFilter').value = '';
     
     // 清除门店搜索
