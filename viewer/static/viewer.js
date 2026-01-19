@@ -426,8 +426,10 @@ async function loadSearchResults() {
         }
     } finally {
         isLoading = false;
-        
-        // 在 isLoading 重置后更新分页按钮状态
+    }
+    
+    // 延迟更新分页按钮，确保 renderResults 完成后再更新
+    setTimeout(() => {
         const paginationContainer = document.getElementById('loadMoreContainer');
         if (paginationContainer && currentPage < totalPages) {
             console.log('显示分页按钮，currentPage:', currentPage, 'totalPages:', totalPages);
@@ -436,7 +438,7 @@ async function loadSearchResults() {
             console.log('隐藏分页按钮，已是最后一页');
             hidePaginationButton();
         }
-    }
+    }, 50);
 }
 
 /**
