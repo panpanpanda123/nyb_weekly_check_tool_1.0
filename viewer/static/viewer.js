@@ -392,10 +392,25 @@ async function loadSearchResults() {
             
             updateResultCount(data.data.total_count, data.data.count);
             
+            // 确保分页容器存在
+            let paginationContainer = document.getElementById('loadMoreContainer');
+            if (!paginationContainer) {
+                console.warn('分页容器不存在，重新创建');
+                const container = document.getElementById('resultsContainer');
+                paginationContainer = document.createElement('div');
+                paginationContainer.id = 'loadMoreContainer';
+                paginationContainer.style.gridColumn = '1 / -1';
+                paginationContainer.style.textAlign = 'center';
+                paginationContainer.style.padding = '20px';
+                container.appendChild(paginationContainer);
+            }
+            
             // 显示分页按钮
             if (data.data.has_more) {
+                console.log('显示分页按钮，has_more:', data.data.has_more, 'currentPage:', currentPage, 'totalPages:', totalPages);
                 showPaginationButton();
             } else {
+                console.log('隐藏分页按钮，已是最后一页');
                 hidePaginationButton();
             }
             
