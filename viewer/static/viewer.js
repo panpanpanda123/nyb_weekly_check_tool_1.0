@@ -635,6 +635,9 @@ function createCompletedCard(result) {
         const loadingDiv = imageContainer.querySelector('.image-loading');
         
         if (img) {
+            // 设置 crossOrigin 以支持 Canvas 处理（用于复制功能）
+            img.crossOrigin = 'anonymous';
+            
             img.onload = function() {
                 if (loadingDiv) loadingDiv.style.display = 'none';
             };
@@ -882,6 +885,9 @@ function createResultCard(result) {
         const loadingDiv = imageContainer.querySelector('.image-loading');
         
         if (img) {
+            // 设置 crossOrigin 以支持 Canvas 处理（用于复制功能）
+            img.crossOrigin = 'anonymous';
+            
             // 设置加载和错误处理
             img.onload = function() {
                 if (loadingDiv) loadingDiv.style.display = 'none';
@@ -1182,9 +1188,9 @@ function clearProcessedItems() {
 
 /**
  * 复制问题信息（图片+门店信息+问题描述）
+ * 优化版：支持复制页面已加载的缩略图
  */
 async function copyProblemInfo(result) {
-    
     try {
         const imageUrl = result.image_url || '';
         const storeId = result.store_id || '';
@@ -1192,73 +1198,193 @@ async function copyProblemInfo(result) {
         const itemName = result.item_name || '';
         const problemNote = result.problem_note || '';
         
-        // 构建文本内容（不包含图片链接）
+        // 构建文本内容
         const textContent = `【不合格项目】
 门店编号：${storeId}
 门店名称：${storeName}
 检查项：${itemName}
 问题描述：${problemNote}`;
         
-        // 尝试复制图片和文本（现代浏览器）
-        if (navigator.clipboard && window.ClipboardItem) {
-            try {
-                if (imageUrl) {
-                    // 显示加载提示
-                    showToast('⏳ 正在加载图片...', 'info');
-                    
-                    // 获取图片
-                    const response = await fetch(imageUrl, {
-                        mode: 'cors',
-                        credentials: 'omit'
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('图片加载失败');
-                    }
-                    
-                    const blob = await response.blob();
-                    
-                    // 同时复制图片和文本
-                    const clipboardItem = new ClipboardItem({
-                        'text/plain': new Blob([textContent], { type: 'text/plain' }),
-                        [blob.type]: blob
-                    });
-                    
-                    await navigator.clipboard.write([clipboardItem]);
-                    showToast('✓ 已复制图片和文字，可直接粘贴发送', 'success');
-                } else {
-                    // 没有图片，只复制文本
-                    await navigator.clipboard.writeText(textContent);
-                    showToast('✓ 已复制文字信息（无图片）', 'success');
-                }
-            } catch (imgError) {
-                console.error('复制失败:', imgError);
-                
-                // 如果是CORS错误或图片加载失败，提示用户
-                if (imgError.message.includes('CORS') || imgError.message.includes('fetch')) {
-                    showToast('⚠️ 图片跨域限制，已复制文字信息', 'warning');
-                    await navigator.clipboard.writeText(textContent);
-                } else {
-                    // 其他错误，降级为只复制文本
-                    await navigator.clipboard.writeText(textContent);
-                    showToast('⚠️ 图片复制失败，已复制文字信息', 'warning');
-                }
-            }
-        } else {
-            // 旧版浏览器不支持图片复制，只复制文本
-            const textarea = document.createElement('textarea');
-            textarea.value = textContent;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast('✓ 已复制文字信息（浏览器不支持图片复制）', 'success');
+        // 检查浏览器是否支持 Clipboard API
+        if (!navigator.clipboard || !window.ClipboardItem) {
+            // 旧版浏览器降级方案
+            copyTextFallback(textContent);
+            return;
         }
+        
+        // 如果没有图片，只复制文本
+        if (!imageUrl) {
+            await navigator.clipboard.writeText(textContent);
+            showToast('✓ 已复制文字信息（无图片）', 'success');
+            return;
+        }
+        
+        // 尝试复制图片
+        showToast('⏳ 正在处理图片...', 'info');
+        
+        // 方案1：从页面上已加载的 img 元素获取图片
+        const imgElement = findImageElement(result.id);
+        if (imgElement && imgElement.complete && imgElement.naturalHeight > 0) {
+            const blob = await convertImageToBlob(imgElement);
+            if (blob) {
+                await copyImageAndText(blob, textContent);
+                return;
+            }
+        }
+        
+        // 方案2：尝试通过 fetch 获取（可能遇到 CORS）
+        try {
+            const response = await fetch(imageUrl, {
+                mode: 'cors',
+                credentials: 'omit'
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                await copyImageAndText(blob, textContent);
+                return;
+            }
+        } catch (fetchError) {
+            console.warn('Fetch 失败，尝试 Canvas 方案:', fetchError);
+        }
+        
+        // 方案3：使用 Canvas 绘制（绕过部分 CORS 限制）
+        if (imgElement) {
+            try {
+                const blob = await convertImageToBlobViaCanvas(imgElement);
+                if (blob) {
+                    await copyImageAndText(blob, textContent);
+                    return;
+                }
+            } catch (canvasError) {
+                console.warn('Canvas 方案失败:', canvasError);
+            }
+        }
+        
+        // 所有方案都失败，降级为只复制文本
+        await navigator.clipboard.writeText(textContent);
+        showToast('⚠️ 图片复制失败（跨域限制），已复制文字信息', 'warning');
         
     } catch (error) {
         console.error('复制失败:', error);
+        showToast('✗ 复制失败，请手动复制', 'error');
+    }
+}
+
+/**
+ * 查找对应的图片元素
+ */
+function findImageElement(resultId) {
+    const card = document.querySelector(`[data-result-id="${resultId}"]`);
+    if (card) {
+        return card.querySelector('.image-container img');
+    }
+    return null;
+}
+
+/**
+ * 将 img 元素转换为 Blob（使用 Canvas）
+ */
+async function convertImageToBlob(imgElement) {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 设置 canvas 尺寸为图片实际尺寸
+        canvas.width = imgElement.naturalWidth;
+        canvas.height = imgElement.naturalHeight;
+        
+        // 绘制图片
+        ctx.drawImage(imgElement, 0, 0);
+        
+        // 转换为 Blob
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/png');
+        });
+    } catch (error) {
+        console.error('转换图片失败:', error);
+        return null;
+    }
+}
+
+/**
+ * 使用 Canvas 转换图片（处理跨域图片）
+ */
+async function convertImageToBlobViaCanvas(imgElement) {
+    try {
+        // 创建新的 Image 对象，设置 crossOrigin
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        return new Promise((resolve, reject) => {
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    
+                    ctx.drawImage(img, 0, 0);
+                    
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/png');
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            
+            img.onerror = () => {
+                reject(new Error('图片加载失败'));
+            };
+            
+            img.src = imgElement.src;
+        });
+    } catch (error) {
+        console.error('Canvas 转换失败:', error);
+        return null;
+    }
+}
+
+/**
+ * 复制图片和文本到剪贴板
+ */
+async function copyImageAndText(imageBlob, textContent) {
+    try {
+        const clipboardItem = new ClipboardItem({
+            'text/plain': new Blob([textContent], { type: 'text/plain' }),
+            'image/png': imageBlob
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        showToast('✓ 已复制图片和文字，可直接粘贴发送', 'success');
+    } catch (error) {
+        console.error('写入剪贴板失败:', error);
+        // 降级为只复制文本
+        await navigator.clipboard.writeText(textContent);
+        showToast('⚠️ 图片复制失败，已复制文字信息', 'warning');
+    }
+}
+
+/**
+ * 降级方案：只复制文本（旧版浏览器）
+ */
+function copyTextFallback(textContent) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = textContent;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('✓ 已复制文字信息（浏览器不支持图片复制）', 'success');
+    } catch (error) {
+        console.error('降级复制失败:', error);
         showToast('✗ 复制失败，请手动复制', 'error');
     }
 }

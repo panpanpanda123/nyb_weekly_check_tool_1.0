@@ -2,6 +2,16 @@
 审核结果展示系统 Flask 应用
 Review Result Viewer Flask Application
 """
+import sys
+import os
+from pathlib import Path
+
+# 添加项目根目录到 Python 路径（解决模块导入问题）
+current_dir = Path(__file__).resolve().parent
+project_root = current_dir.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from flask import Flask, render_template, request, jsonify
 from sqlalchemy.orm import Session
 from shared.database_models import (
@@ -12,9 +22,7 @@ from shared.database_models import (
     ViewerReviewResult
 )
 from viewer.data_importer import DataImporter
-import os
 from werkzeug.utils import secure_filename
-from pathlib import Path
 
 # 创建Flask应用
 app = Flask(__name__)
