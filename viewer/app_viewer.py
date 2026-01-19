@@ -105,14 +105,17 @@ def get_filters():
             .all()
         cities = [c[0] for c in cities]
         
-        # 获取门店标签列表（从白名单）
-        store_tags = session.query(StoreWhitelist.store_tag)\
-            .filter(StoreWhitelist.store_tag.isnot(None))\
-            .filter(StoreWhitelist.store_tag != '')\
-            .distinct()\
-            .order_by(StoreWhitelist.store_tag)\
-            .all()
-        store_tags = [st[0] for st in store_tags]
+        # 获取运营列表（优先临时运营，其次省市运营）
+        from sqlalchemy import func
+        operators_query = session.query(
+            func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator).label('operator')
+        ).filter(
+            func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator).isnot(None)
+        ).filter(
+            func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator) != ''
+        ).distinct().order_by('operator')
+        
+        operators = [op[0] for op in operators_query.all()]
         
         # 审核结果选项（固定值）
         review_results = ['合格', '不合格']
@@ -123,7 +126,7 @@ def get_filters():
                 'war_zones': war_zones,
                 'provinces': provinces,
                 'cities': cities,
-                'store_tags': store_tags,
+                'operators': operators,
                 'review_results': review_results
             }
         })
@@ -233,7 +236,7 @@ def search_reviews():
         war_zone = request.args.get('war_zone', '').strip()
         province = request.args.get('province', '').strip()
         city = request.args.get('city', '').strip()
-        store_tag = request.args.get('store_tag', '').strip()
+        operator = request.args.get('operator', '').strip()
         review_result = request.args.get('review_result', '').strip()
         
         # 获取门店搜索参数
@@ -266,12 +269,15 @@ def search_reviews():
         if review_result:
             query = query.filter(ViewerReviewResult.review_result == review_result)
         
-        # 如果有门店标签筛选，需要关联白名单表
-        if store_tag:
+        # 如果有运营筛选，需要关联白名单表（优先临时运营，其次省市运营）
+        if operator:
+            from sqlalchemy import func
             query = query.join(
                 StoreWhitelist,
                 ViewerReviewResult.store_id == StoreWhitelist.store_id
-            ).filter(StoreWhitelist.store_tag == store_tag)
+            ).filter(
+                func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator) == operator
+            )
         
         # 获取总数
         total_count = query.count()
