@@ -405,15 +405,6 @@ async function loadSearchResults() {
                 container.appendChild(paginationContainer);
             }
             
-            // 显示分页按钮
-            if (data.data.has_more) {
-                console.log('显示分页按钮，has_more:', data.data.has_more, 'currentPage:', currentPage, 'totalPages:', totalPages);
-                showPaginationButton();
-            } else {
-                console.log('隐藏分页按钮，已是最后一页');
-                hidePaginationButton();
-            }
-            
             if (data.data.total_count === 0) {
                 showToast('未找到符合条件的审核结果', 'info');
             } else if (currentPage === 1) {
@@ -435,6 +426,16 @@ async function loadSearchResults() {
         }
     } finally {
         isLoading = false;
+        
+        // 在 isLoading 重置后更新分页按钮状态
+        const paginationContainer = document.getElementById('loadMoreContainer');
+        if (paginationContainer && currentPage < totalPages) {
+            console.log('显示分页按钮，currentPage:', currentPage, 'totalPages:', totalPages);
+            showPaginationButton();
+        } else if (paginationContainer && currentPage >= totalPages) {
+            console.log('隐藏分页按钮，已是最后一页');
+            hidePaginationButton();
+        }
     }
 }
 
@@ -1189,6 +1190,7 @@ function clearProcessedItems() {
 /**
  * 复制问题信息（图片+门店信息+问题描述）
  * 优化版：支持复制页面已加载的缩略图
+ * 兼容 HTTP 和 HTTPS 环境
  */
 async function copyProblemInfo(result) {
     try {
@@ -1205,10 +1207,13 @@ async function copyProblemInfo(result) {
 检查项：${itemName}
 问题描述：${problemNote}`;
         
+        // 检查是否在安全上下文（HTTPS 或 localhost）
+        const isSecureContext = window.isSecureContext;
+        
         // 检查浏览器是否支持 Clipboard API
-        if (!navigator.clipboard || !window.ClipboardItem) {
-            // 旧版浏览器降级方案
-            copyTextFallback(textContent);
+        if (!isSecureContext || !navigator.clipboard || !window.ClipboardItem) {
+            // HTTP 环境或旧版浏览器：只复制文本
+            copyTextFallback(textContent, !isSecureContext);
             return;
         }
         
@@ -1370,9 +1375,9 @@ async function copyImageAndText(imageBlob, textContent) {
 }
 
 /**
- * 降级方案：只复制文本（旧版浏览器）
+ * 降级方案：只复制文本（旧版浏览器或 HTTP 环境）
  */
-function copyTextFallback(textContent) {
+function copyTextFallback(textContent, isHttpEnv = false) {
     try {
         const textarea = document.createElement('textarea');
         textarea.value = textContent;
@@ -1382,7 +1387,12 @@ function copyTextFallback(textContent) {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        showToast('✓ 已复制文字信息（浏览器不支持图片复制）', 'success');
+        
+        if (isHttpEnv) {
+            showToast('✓ 已复制文字信息（需要 HTTPS 才能复制图片）', 'success');
+        } else {
+            showToast('✓ 已复制文字信息（浏览器不支持图片复制）', 'success');
+        }
     } catch (error) {
         console.error('降级复制失败:', error);
         showToast('✗ 复制失败，请手动复制', 'error');
