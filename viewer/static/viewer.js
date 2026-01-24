@@ -1,5 +1,8 @@
 // 审核结果展示系统前端逻辑
 
+// API 基础路径配置（根据部署路径调整）
+const API_BASE_PATH = '/weeklycheck';
+
 // 全局状态
 let filterOptions = {
     war_zones: [],
@@ -58,7 +61,7 @@ async function loadFilterOptions() {
     try {
         showToast('正在加载筛选选项...', 'info');
         
-        const response = await fetch('/api/filters');
+        const response = await fetch(`${API_BASE_PATH}/api/filters`);
         const data = await response.json();
         
         if (data.success) {
@@ -276,7 +279,7 @@ function bindEvents() {
  */
 async function loadProvinces(warZone) {
     try {
-        const response = await fetch(`/api/filters/provinces?war_zone=${encodeURIComponent(warZone)}`);
+        const response = await fetch(`${API_BASE_PATH}/api/filters/provinces?war_zone=${encodeURIComponent(warZone)}`);
         const data = await response.json();
         
         if (data.success) {
@@ -296,7 +299,7 @@ async function loadProvinces(warZone) {
  */
 async function loadCities(province) {
     try {
-        const response = await fetch(`/api/filters/cities?province=${encodeURIComponent(province)}`);
+        const response = await fetch(`${API_BASE_PATH}/api/filters/cities?province=${encodeURIComponent(province)}`);
         const data = await response.json();
         
         if (data.success) {
@@ -363,7 +366,7 @@ async function loadSearchResults() {
         params.append('page', currentPage);
         params.append('per_page', 9);  // 每页9条
         
-        const response = await fetch(`/api/search?${params.toString()}`);
+        const response = await fetch(`${API_BASE_PATH}/api/search?${params.toString()}`);
         const data = await response.json();
         
         if (data.success) {
