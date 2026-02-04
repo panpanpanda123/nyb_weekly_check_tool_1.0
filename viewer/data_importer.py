@@ -308,7 +308,8 @@ class DataImporter:
                     store_id = str(store_id_value).strip()
                 
                 # 获取运营数据（尝试多种可能的列名）
-                dine_in_revenue = self._get_column_value(row, df.columns, ['堂食营业额', '营业额', 'B'])
+                # 优先使用"1月堂食营业额"（T列），如果没有则使用"堂食营业额"
+                dine_in_revenue = self._get_column_value(row, df.columns, ['1月堂食营业额', '堂食营业额', '营业额', 'B'])
                 comprehensive_score = self._get_column_value(row, df.columns, ['综合得分', '得分', 'C'])
                 operation_score = self._get_column_value(row, df.columns, ['评分', '运营评分', 'D'])
                 
