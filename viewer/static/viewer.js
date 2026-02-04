@@ -32,6 +32,9 @@ let currentView = 'pending';  // 当前视图：pending 或 completed
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 页面加载开始...');
     
+    // 绑定功能选项卡切换
+    bindFunctionTabs();
+    
     // 加载已处理的项目记录
     loadProcessedItems();
     
@@ -43,6 +46,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     console.log('✅ 页面初始化完成');
 });
+
+/**
+ * 绑定功能选项卡切换
+ */
+function bindFunctionTabs() {
+    const reviewTab = document.getElementById('reviewTab');
+    const ratingTab = document.getElementById('ratingTab');
+    
+    if (reviewTab) {
+        reviewTab.addEventListener('click', function() {
+            // 当前已在周清审核页面，无需操作
+        });
+    }
+    
+    if (ratingTab) {
+        ratingTab.addEventListener('click', function() {
+            window.location.href = '/weeklycheck/rating';
+        });
+    }
+}
 
 // 监听浏览器返回按钮，用于关闭图片模态框
 window.addEventListener('popstate', function(event) {

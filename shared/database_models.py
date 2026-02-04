@@ -30,6 +30,7 @@ class StoreWhitelist(Base):
     city_operator = Column(String(50), index=True, comment='省市运营')
     temp_operator = Column(String(50), comment='临时运营')
     sub_operator = Column(String(50), comment='次运营')
+    regional_manager = Column(String(50), comment='区域经理')
     
     # 其他信息
     business_status = Column(String(50), comment='门店营业状态')
@@ -57,6 +58,7 @@ class StoreWhitelist(Base):
             'city_operator': self.city_operator,
             'temp_operator': self.temp_operator,
             'sub_operator': self.sub_operator,
+            'regional_manager': self.regional_manager,
             'business_status': self.business_status,
             'menu_version': self.menu_version
         }
@@ -165,6 +167,68 @@ def create_session_factory(engine):
     return scoped_session(session_factory)
 
 
+class StoreRating(Base):
+    """门店评级模型"""
+    __tablename__ = 'store_ratings'
+    
+    # 主键
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    
+    # 门店信息
+    store_id = Column(String(50), nullable=False, index=True, comment='门店ID')
+    
+    # 评级信息
+    rating = Column(String(1), nullable=False, comment='评级：A/B/C')
+    rated_at = Column(DateTime, default=datetime.now, comment='评级时间')
+    rated_by = Column(String(100), comment='评级人（可选）')
+    
+    # 索引
+    __table_args__ = (
+        Index('idx_store_rating', 'store_id', 'rated_at'),
+        {'comment': '门店评级表'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'store_id': self.store_id,
+            'rating': self.rating,
+            'rated_at': self.rated_at.strftime('%Y-%m-%d %H:%M:%S') if self.rated_at else '',
+            'rated_by': self.rated_by or ''
+        }
+
+
+class StoreOperationData(Base):
+    """门店运营数据模型"""
+    __tablename__ = 'store_operation_data'
+    
+    # 主键
+    store_id = Column(String(50), primary_key=True, comment='门店ID')
+    
+    # 运营数据
+    dine_in_revenue = Column(String(100), comment='堂食营业额')
+    comprehensive_score = Column(String(100), comment='综合得分')
+    operation_score = Column(String(100), comment='评分')
+    
+    # 更新时间
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment='更新时间')
+    
+    __table_args__ = (
+        {'comment': '门店运营数据表'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'store_id': self.store_id,
+            'dine_in_revenue': self.dine_in_revenue or '',
+            'comprehensive_score': self.comprehensive_score or '',
+            'operation_score': self.operation_score or '',
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else ''
+        }
+
+
 def init_viewer_db(engine):
     """
     初始化展示系统数据库表
@@ -176,3 +240,5 @@ def init_viewer_db(engine):
     print("✓ 展示系统数据库表初始化完成")
     print(f"  - 表名: {StoreWhitelist.__tablename__}")
     print(f"  - 表名: {ViewerReviewResult.__tablename__}")
+    print(f"  - 表名: {StoreRating.__tablename__}")
+    print(f"  - 表名: {StoreOperationData.__tablename__}")

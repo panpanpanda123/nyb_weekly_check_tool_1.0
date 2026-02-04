@@ -34,6 +34,21 @@ h1 {
     margin-bottom: 20px;
 }
 
+/* 功能选项卡 */
+.function-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.function-tabs .tab-btn {
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
 /* 视图切换标签 */
 .view-tabs {
     display: flex;

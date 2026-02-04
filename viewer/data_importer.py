@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
-from shared.database_models import StoreWhitelist, ViewerReviewResult
+from shared.database_models import StoreWhitelist, ViewerReviewResult, StoreOperationData
 
 
 @dataclass
@@ -77,6 +77,7 @@ class DataImporter:
                     city_operator=str(row.get('省市运营', '')) if pd.notna(row.get('省市运营')) else None,
                     temp_operator=str(row.get('临时运营', '')) if pd.notna(row.get('临时运营')) else None,
                     sub_operator=str(row.get('次运营', '')) if pd.notna(row.get('次运营')) else None,
+                    regional_manager=str(row.get('区域经理', '')) if pd.notna(row.get('区域经理')) else None,
                     business_status=str(row.get('门店营业状态', '')) if pd.notna(row.get('门店营业状态')) else None,
                     menu_version=str(row.get('菜单版本', '')) if pd.notna(row.get('菜单版本')) else None
                 )
@@ -255,3 +256,107 @@ class DataImporter:
         """
         required_columns = ['门店名称', '门店编号', '检查项名称', '审核结果']
         return all(col in df.columns for col in required_columns)
+    
+    def import_operation_data(self, file_path: str, sheet_name: str = 'Sheet2') -> ImportResult:
+        """
+        导入门店运营数据（从Excel的Sheet2）
+        
+        Args:
+            file_path: Excel文件路径
+            sheet_name: Sheet名称，默认为'Sheet2'
+            
+        Returns:
+            ImportResult: 导入结果
+        """
+        try:
+            # 读取Excel文件的指定Sheet
+            df = pd.read_excel(file_path, sheet_name=sheet_name)
+            
+            # 验证文件格式（至少需要门店ID列）
+            if 'A' not in df.columns and '门店ID' not in df.columns and '门店编号' not in df.columns:
+                # 尝试使用第一列作为门店ID
+                if len(df.columns) > 0:
+                    df.rename(columns={df.columns[0]: '门店ID'}, inplace=True)
+                else:
+                    return ImportResult(
+                        success=False,
+                        records_count=0,
+                        error_message="运营数据文件格式不正确，缺少门店ID列"
+                    )
+            
+            # 清空现有数据
+            self.session.query(StoreOperationData).delete()
+            
+            # 导入数据
+            records_count = 0
+            for _, row in df.iterrows():
+                # 获取门店ID（兼容多种列名）
+                store_id_value = None
+                for col_name in ['门店ID', '门店编号', 'A', df.columns[0]]:
+                    if col_name in df.columns and pd.notna(row.get(col_name)):
+                        store_id_value = row.get(col_name)
+                        break
+                
+                # 跳过门店ID为空的行
+                if store_id_value is None or pd.isna(store_id_value):
+                    continue
+                
+                # 转换门店ID为字符串
+                if isinstance(store_id_value, (int, float)):
+                    store_id = str(int(store_id_value))
+                else:
+                    store_id = str(store_id_value).strip()
+                
+                # 获取运营数据（尝试多种可能的列名）
+                dine_in_revenue = self._get_column_value(row, df.columns, ['堂食营业额', '营业额', 'B'])
+                comprehensive_score = self._get_column_value(row, df.columns, ['综合得分', '得分', 'C'])
+                operation_score = self._get_column_value(row, df.columns, ['评分', '运营评分', 'D'])
+                
+                operation_data = StoreOperationData(
+                    store_id=store_id,
+                    dine_in_revenue=dine_in_revenue,
+                    comprehensive_score=comprehensive_score,
+                    operation_score=operation_score,
+                    updated_at=datetime.now()
+                )
+                self.session.add(operation_data)
+                records_count += 1
+            
+            # 提交事务
+            self.session.commit()
+            
+            return ImportResult(
+                success=True,
+                records_count=records_count,
+                error_message=None
+            )
+            
+        except Exception as e:
+            self.session.rollback()
+            return ImportResult(
+                success=False,
+                records_count=0,
+                error_message=f"导入运营数据失败: {str(e)}"
+            )
+    
+    def _get_column_value(self, row: pd.Series, columns: pd.Index, possible_names: List[str]) -> Optional[str]:
+        """
+        从行中获取列值（尝试多个可能的列名）
+        
+        Args:
+            row: pandas Series（一行数据）
+            columns: DataFrame的列名列表
+            possible_names: 可能的列名列表
+            
+        Returns:
+            str: 列值（如果找到），否则返回None
+        """
+        for name in possible_names:
+            if name in columns and pd.notna(row.get(name)):
+                value = row.get(name)
+                # 转换为字符串
+                if isinstance(value, (int, float)):
+                    return str(value)
+                else:
+                    return str(value).strip()
+        return None
