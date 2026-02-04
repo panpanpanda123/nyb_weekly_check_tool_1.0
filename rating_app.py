@@ -162,7 +162,12 @@ def get_rating_stores():
         # 添加当前评级
         for store in page_stores:
             store_id = store.get('store_id')
-            store['current_rating'] = ratings.get(store_id, '')
+            rating_data = ratings.get(store_id, {})
+            # 如果rating_data是字典，取出rating字段；否则直接使用
+            if isinstance(rating_data, dict):
+                store['current_rating'] = rating_data.get('rating', '')
+            else:
+                store['current_rating'] = rating_data if rating_data else ''
         
         return jsonify({
             'success': True,
@@ -330,7 +335,7 @@ def export_ratings():
 if __name__ == '__main__':
     print("=" * 60)
     print("门店评级系统启动中...")
-    print("本地访问地址: http://127.0.0.1:8000")
+    print("本地访问地址: http://127.0.0.1:8001")
     print("=" * 60)
     
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    app.run(host='0.0.0.0', port=8001, debug=False)

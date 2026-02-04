@@ -1,5 +1,6 @@
 # 数据文件（敏感信息）
-rating_data/
+rating_data/*.json
+rating_data/*.csv
 store_rank/
 *.xlsx
 *.csv
