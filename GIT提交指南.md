@@ -21,7 +21,7 @@ git add .
 
 ### 2. 提交
 ```bash
-git commit -m "门店评级系统完成：优化UI、修复评级显示、完善部署脚本"
+git commit -m "修复CSV导出None值错误"
 ```
 
 ### 3. 推送到GitHub
@@ -129,6 +129,9 @@ http://blitzepanda.top/rating
 - ❌ logs/
 
 ## 更新日志
+
+### 2026-02-05
+- ✅ 修复CSV导出None值错误（处理数据字段为空的情况）
 
 ### 2026-02-04
 - ✅ 优化界面UI（现代化设计）

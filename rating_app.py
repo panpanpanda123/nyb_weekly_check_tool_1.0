@@ -294,15 +294,16 @@ def export_ratings():
             rating_data = ratings.get(store_id, {})
             
             if rating_data:
+                # 确保所有值都转换为字符串，处理None值
                 line = ','.join([
-                    str(store.get('store_id', '')),
-                    store.get('store_name', ''),
-                    store.get('city', ''),
-                    store.get('war_zone', ''),
-                    store.get('regional_manager', ''),
-                    str(store.get('dine_in_revenue', '')),
-                    rating_data.get('rating', ''),
-                    rating_data.get('updated_at', '')
+                    str(store.get('store_id') or ''),
+                    str(store.get('store_name') or ''),
+                    str(store.get('city') or ''),
+                    str(store.get('war_zone') or ''),
+                    str(store.get('regional_manager') or ''),
+                    str(store.get('dine_in_revenue') or ''),
+                    str(rating_data.get('rating') or ''),
+                    str(rating_data.get('updated_at') or '')
                 ])
                 csv_lines.append(line)
         

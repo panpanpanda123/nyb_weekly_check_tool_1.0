@@ -8,7 +8,7 @@ echo.
 echo [1/4] 上传修复后的代码...
 scp rating_app.py root@blitzepanda.top:/opt/review-result-viewer/
 if errorlevel 1 (
-    echo ❌ 上传失败！
+    echo ❌ 上传失败！请检查网络连接
     pause
     exit /b 1
 )
@@ -42,6 +42,11 @@ echo.
 echo ========================================
 echo ✅ 修复完成！
 echo ========================================
+echo.
+echo 修复内容：
+echo - 修复评级显示问题
+echo - 修复CSV导出None值错误
+echo - 统一端口配置为8001
 echo.
 echo 请访问: http://blitzepanda.top/rating
 echo.
