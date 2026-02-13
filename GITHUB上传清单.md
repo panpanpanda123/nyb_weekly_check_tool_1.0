@@ -25,12 +25,25 @@
 
 ### 文档
 - [x] README.md
+- [x] 使用指南.md
+- [x] 快速参考.md
 - [x] 门店评级系统说明.md
+- [x] GIT提交指南.md
+- [x] 提交和部署流程.md
+- [x] 服务器快速部署.md
+- [x] 部署总结.md
+- [x] 修复说明.md
+- [x] GITHUB上传清单.md
+- [x] viewer/未匹配门店处理说明.md
 
 ### 部署文件
 - [x] deploy/deploy_rating.sh
+- [x] deploy/server_deploy.sh
 - [x] deploy/rating_deploy_guide.md
+- [x] deploy/nginx_config_guide.md
 - [x] upload_rating_to_server.bat
+- [x] upload_rating_fix.bat
+- [x] deploy_from_github.bat
 
 ### shared目录
 - [x] shared/database_models.py
