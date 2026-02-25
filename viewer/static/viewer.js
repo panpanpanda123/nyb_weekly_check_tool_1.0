@@ -28,7 +28,7 @@ let searchResults = [];
 let currentPage = 1;
 let totalPages = 1;
 let isLoading = false;
-let processedItems = new Set();  // 记录已处理的项目ID
+let processedStores = new Set();  // 记录已处理的门店ID
 let currentView = 'pending';  // 当前视图：pending 或 completed
 
 // 页面加载完成后初始化
@@ -101,9 +101,6 @@ async function loadFilterOptions() {
             
             // 填充运营下拉菜单
             populateSelect('operatorFilter', filterOptions.operators);
-            
-            // 填充是否合格下拉菜单
-            populateSelect('reviewResultFilter', filterOptions.review_results);
             
             console.log('✅ 筛选选项加载完成');
         } else {
@@ -232,11 +229,6 @@ function bindEvents() {
         currentFilters.operator = e.target.value;
     });
     
-    // 是否合格选择变化
-    document.getElementById('reviewResultFilter').addEventListener('change', function(e) {
-        currentFilters.review_result = e.target.value;
-    });
-    
     // 搜索按钮
     document.getElementById('searchBtn').addEventListener('click', performSearch);
     
@@ -250,61 +242,14 @@ function bindEvents() {
         }
     });
     
-    // 视图切换
-    document.getElementById('pendingTab').addEventListener('click', function() {
-        switchView('pending');
-    });
-    
-    document.getElementById('completedTab').addEventListener('click', function() {
-        switchView('completed');
-    });
-    
     // 清除已完成记录
     document.getElementById('clearProcessedBtn').addEventListener('click', function() {
         if (confirm('确定要清除所有已完成记录吗？')) {
             clearProcessedItems();
-            if (currentView === 'completed') {
-                renderCompletedView();
-            } else {
-                // 刷新待处理视图
-                if (searchResults.length > 0) {
-                    renderResults(searchResults);
-                }
+            if (searchResults.length > 0) {
+                renderResults(searchResults);
             }
         }
-    });
-    
-    // 显示合格项开关
-    document.getElementById('showQualifiedToggle').addEventListener('change', function(e) {
-        const showQualified = e.target.checked;
-        
-        if (showQualified) {
-            // 从已完成列表中移除所有合格项
-            searchResults.forEach(result => {
-                if (result.review_result === '合格') {
-                    processedItems.delete(result.id);
-                }
-            });
-        } else {
-            // 将所有合格项标记为已完成
-            searchResults.forEach(result => {
-                if (result.review_result === '合格') {
-                    processedItems.add(result.id);
-                }
-            });
-        }
-        
-        // 保存到localStorage
-        localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
-        
-        // 刷新当前视图
-        if (currentView === 'pending') {
-            renderResults(searchResults);
-        } else {
-            renderCompletedView();
-        }
-        
-        showToast(showQualified ? '✓ 已显示合格项' : '✓ 已隐藏合格项', 'success');
     });
 }
 
@@ -396,58 +341,31 @@ async function loadSearchResults() {
         if (currentFilters.city) params.append('city', currentFilters.city);
         if (currentFilters.regional_manager) params.append('regional_manager', currentFilters.regional_manager);
         if (currentFilters.operator) params.append('operator', currentFilters.operator);
-        if (currentFilters.review_result) params.append('review_result', currentFilters.review_result);
         if (currentFilters.store_search) params.append('store_search', currentFilters.store_search);
         params.append('page', currentPage);
-        params.append('per_page', 9);  // 每页9条
+        params.append('per_page', 20);  // 每页20个门店
         
         const response = await fetch(`${API_BASE_PATH}/api/search?${params.toString()}`);
         const data = await response.json();
         
         if (data.success) {
-            const results = data.data.results;
+            const stores = data.data.stores;
             totalPages = data.data.total_pages;
             
-            // 自动标记合格项为已完成
-            results.forEach(result => {
-                if (result.review_result === '合格' && !processedItems.has(result.id)) {
-                    processedItems.add(result.id);
-                }
-            });
-            
-            // 保存到localStorage
-            localStorage.setItem('processedItems', JSON.stringify([...processedItems]));
-            
             if (currentPage === 1) {
-                // 第一页，替换所有结果
-                searchResults = results;
+                searchResults = stores;
                 renderResults(searchResults);
             } else {
-                // 后续页，追加结果
-                searchResults = searchResults.concat(results);
-                appendResults(results);
+                searchResults = searchResults.concat(stores);
+                appendResults(stores);
             }
             
-            updateResultCount(data.data.total_count, data.data.count);
+            updateResultCount(data.data.total_stores);
             
-            // 确保分页容器存在
-            let paginationContainer = document.getElementById('loadMoreContainer');
-            if (!paginationContainer) {
-                console.warn('分页容器不存在，重新创建');
-                const container = document.getElementById('resultsContainer');
-                paginationContainer = document.createElement('div');
-                paginationContainer.id = 'loadMoreContainer';
-                paginationContainer.style.gridColumn = '1 / -1';
-                paginationContainer.style.textAlign = 'center';
-                paginationContainer.style.padding = '20px';
-                container.appendChild(paginationContainer);
-            }
-            
-            if (data.data.total_count === 0) {
-                showToast('未找到符合条件的审核结果', 'info');
+            if (data.data.total_stores === 0) {
+                showToast('未找到不合格门店', 'info');
             } else if (currentPage === 1) {
-                const unqualifiedCount = results.filter(r => r.review_result === '不合格').length;
-                showToast(`找到 ${data.data.total_count} 条结果，其中 ${unqualifiedCount} 条不合格`, 'success');
+                showToast(`找到 ${data.data.total_stores} 个不合格门店`, 'success');
             }
         } else {
             showToast('搜索失败: ' + data.error, 'error');
@@ -526,7 +444,6 @@ function clearFilters() {
     document.getElementById('cityFilter').value = '';
     document.getElementById('regionalManagerFilter').value = '';
     document.getElementById('operatorFilter').value = '';
-    document.getElementById('reviewResultFilter').value = '';
     
     // 清除门店搜索
     const storeSearchInput = document.getElementById('storeSearch');
@@ -752,37 +669,31 @@ function restoreItem(resultId, cardElement) {
 }
 
 /**
- * 渲染搜索结果
+ * 渲染搜索结果（门店卡片）
  */
-/**
- * 渲染搜索结果
- */
-function renderResults(results) {
+function renderResults(stores) {
     const container = document.getElementById('resultsContainer');
     container.innerHTML = '';
     
-    // 待处理视图：只显示未处理的项目
-    const unprocessedResults = currentView === 'pending' 
-        ? results.filter(r => !processedItems.has(r.id))
-        : results;
+    const unprocessedStores = currentView === 'pending' 
+        ? stores.filter(s => !processedStores.has(s.store_id))
+        : stores;
     
-    // 先创建分页按钮容器（无论有没有结果都要创建）
     const loadMoreContainer = document.createElement('div');
     loadMoreContainer.id = 'loadMoreContainer';
     loadMoreContainer.style.gridColumn = '1 / -1';
     loadMoreContainer.style.textAlign = 'center';
     loadMoreContainer.style.padding = '20px';
     
-    if (unprocessedResults.length === 0) {
+    if (unprocessedStores.length === 0) {
         if (currentView === 'pending') {
             container.innerHTML = `
                 <div class="empty-results">
                     <div class="empty-results-icon">🎉</div>
-                    <h3>当前页的项目已全部处理完成</h3>
-                    <p>点击"下一页"继续查看更多项目</p>
+                    <h3>当前页的门店已全部处理完成</h3>
+                    <p>点击"下一页"继续查看更多门店</p>
                 </div>
             `;
-            // 即使没有结果，也要添加分页容器
             container.appendChild(loadMoreContainer);
         } else {
             showEmptyResults();
@@ -790,35 +701,165 @@ function renderResults(results) {
         return;
     }
     
-    unprocessedResults.forEach(result => {
-        const card = createResultCard(result);
+    unprocessedStores.forEach(store => {
+        const card = createStoreCard(store);
         container.appendChild(card);
     });
     
-    // 添加分页按钮容器
     container.appendChild(loadMoreContainer);
 }
 
 /**
- * 追加搜索结果（分页加载）
+ * 追加搜索结果
  */
-function appendResults(results) {
+function appendResults(stores) {
     const container = document.getElementById('resultsContainer');
     const loadMoreContainer = document.getElementById('loadMoreContainer');
     
-    // 待处理视图：只显示未处理的项目
-    const unprocessedResults = currentView === 'pending'
-        ? results.filter(r => !processedItems.has(r.id))
-        : results;
+    const unprocessedStores = currentView === 'pending'
+        ? stores.filter(s => !processedStores.has(s.store_id))
+        : stores;
     
-    unprocessedResults.forEach(result => {
-        const card = createResultCard(result);
-        // 在加载更多按钮之前插入
+    unprocessedStores.forEach(store => {
+        const card = createStoreCard(store);
         if (loadMoreContainer) {
             container.insertBefore(card, loadMoreContainer);
         } else {
             container.appendChild(card);
         }
+    });
+}
+
+/**
+ * 创建门店卡片
+ */
+function createStoreCard(store) {
+    const card = document.createElement('div');
+    card.className = 'store-card';
+    card.dataset.storeId = store.store_id;
+    
+    const itemCount = store.items.length;
+    
+    card.innerHTML = `
+        <div class="store-card-header">
+            <div class="store-info">
+                <div class="store-name">${escapeHtml(store.store_name)}</div>
+                <div class="store-details">
+                    <span>门店编号: ${escapeHtml(store.store_id)}</span>
+                    <span>|</span>
+                    <span>${escapeHtml(store.war_zone || '-')} / ${escapeHtml(store.province || '-')} / ${escapeHtml(store.city || '-')}</span>
+                </div>
+            </div>
+            <div class="store-badge">
+                <span class="badge-count">${itemCount}</span>
+                <span class="badge-label">个不合格项</span>
+            </div>
+        </div>
+        <div class="store-card-actions">
+            <button class="btn-view-details">📋 查看详情</button>
+            <button class="btn-mark-done">✓ 标记已处理</button>
+        </div>
+        <div class="store-details-panel" style="display:none;"></div>
+    `;
+    
+    // 查看详情按钮
+    card.querySelector('.btn-view-details').onclick = function() {
+        toggleStoreDetails(card, store);
+    };
+    
+    // 标记已处理按钮
+    card.querySelector('.btn-mark-done').onclick = function() {
+        markStoreAsProcessed(store.store_id, card);
+    };
+    
+    return card;
+}
+
+/**
+ * 切换门店详情显示
+ */
+function toggleStoreDetails(card, store) {
+    const panel = card.querySelector('.store-details-panel');
+    const btn = card.querySelector('.btn-view-details');
+    
+    if (panel.style.display === 'none') {
+        // 显示详情
+        panel.innerHTML = store.items.map(item => `
+            <div class="item-detail">
+                <div class="item-header">
+                    <span class="item-name">📋 ${escapeHtml(item.item_name)}</span>
+                    <button class="btn-copy-item" onclick="copyItemInfo(event, ${JSON.stringify(item).replace(/"/g, '&quot;')})">📋 复制</button>
+                </div>
+                ${item.image_url ? `
+                    <div class="item-image" onclick="openImageModal('${escapeHtml(item.image_url)}', '${escapeHtml(store.store_name)} - ${escapeHtml(item.item_name)}')">
+                        <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.item_name)}" loading="lazy">
+                    </div>
+                ` : ''}
+                ${item.problem_note ? `
+                    <div class="item-problem">❗ ${escapeHtml(item.problem_note)}</div>
+                ` : ''}
+            </div>
+        `).join('');
+        panel.style.display = 'block';
+        btn.textContent = '🔼 收起详情';
+    } else {
+        // 隐藏详情
+        panel.style.display = 'none';
+        btn.textContent = '📋 查看详情';
+    }
+}
+
+/**
+ * 标记门店为已处理
+ */
+function markStoreAsProcessed(storeId, cardElement) {
+    processedStores.add(storeId);
+    localStorage.setItem('processedStores', JSON.stringify([...processedStores]));
+    
+    cardElement.style.transition = 'opacity 0.3s, transform 0.3s';
+    cardElement.style.opacity = '0';
+    cardElement.style.transform = 'scale(0.9)';
+    
+    setTimeout(() => {
+        cardElement.remove();
+        showToast('✓ 已标记为已处理', 'success');
+        
+        const remainingCards = document.querySelectorAll('.store-card').length;
+        if (remainingCards === 0) {
+            const container = document.getElementById('resultsContainer');
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-results';
+            emptyDiv.style.gridColumn = '1 / -1';
+            emptyDiv.innerHTML = `
+                <div class="empty-results-icon">🎉</div>
+                <h3>当前页的门店已全部处理完成</h3>
+                <p>点击"下一页"继续查看更多门店</p>
+            `;
+            const paginationContainer = document.getElementById('loadMoreContainer');
+            if (paginationContainer) {
+                container.insertBefore(emptyDiv, paginationContainer);
+            } else {
+                container.appendChild(emptyDiv);
+            }
+        }
+    }, 300);
+}
+
+/**
+ * 复制单个检查项信息
+ */
+function copyItemInfo(event, item) {
+    event.stopPropagation();
+    const textContent = `【不合格项目】
+门店编号：${item.store_id}
+门店名称：${item.store_name}
+检查项：${item.item_name}
+问题描述：${item.problem_note || '无'}`;
+    
+    navigator.clipboard.writeText(textContent).then(() => {
+        showToast('✓ 已复制', 'success');
+    }).catch(() => {
+        showToast('✗ 复制失败', 'error');
     });
 }
 
@@ -1082,11 +1123,8 @@ function showEmptyResults() {
 /**
  * 更新结果计数
  */
-function updateResultCount(totalCount, currentCount) {
-    const countText = currentCount !== undefined 
-        ? `显示: ${currentCount} / 总计: ${totalCount}`
-        : `结果: ${totalCount}`;
-    document.getElementById('resultCount').textContent = countText;
+function updateResultCount(totalStores) {
+    document.getElementById('resultCount').textContent = `不合格门店: ${totalStores}`;
 }
 
 /**
@@ -1206,17 +1244,17 @@ async function markAsProcessed(resultId, cardElement) {
 }
 
 /**
- * 从localStorage加载已处理的项目
+ * 从localStorage加载已处理的门店
  */
 function loadProcessedItems() {
     try {
-        const saved = localStorage.getItem('processedItems');
+        const saved = localStorage.getItem('processedStores');
         if (saved) {
-            processedItems = new Set(JSON.parse(saved));
+            processedStores = new Set(JSON.parse(saved));
         }
     } catch (error) {
-        console.error('加载已处理项目失败:', error);
-        processedItems = new Set();
+        console.error('加载已处理门店失败:', error);
+        processedStores = new Set();
     }
 }
 
@@ -1224,8 +1262,8 @@ function loadProcessedItems() {
  * 清除已处理记录
  */
 function clearProcessedItems() {
-    processedItems.clear();
-    localStorage.removeItem('processedItems');
+    processedStores.clear();
+    localStorage.removeItem('processedStores');
     showToast('✓ 已清除所有已处理记录', 'info');
 }
 

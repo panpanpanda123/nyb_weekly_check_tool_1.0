@@ -19,13 +19,7 @@
             
             <!-- 视图切换标签 -->
             <div class="view-tabs">
-                <button id="pendingTab" class="tab-btn active">📝 待处理 (不合格)</button>
-                <button id="completedTab" class="tab-btn">✓ 已完成列表</button>
-                <label class="toggle-label">
-                    <input type="checkbox" id="showQualifiedToggle">
-                    <span>显示合格项</span>
-                </label>
-                <button id="clearProcessedBtn" class="tab-btn clear-btn" style="margin-left: auto;">🗑️ 清除已完成记录</button>
+                <button id="clearProcessedBtn" class="tab-btn clear-btn">🗑️ 清除已完成记录</button>
             </div>
             
             <!-- 搜索区域 -->
@@ -70,13 +64,6 @@
                     <div class="filter-item">
                         <label for="operatorFilter">运营:</label>
                         <select id="operatorFilter" class="filter-select">
-                            <option value="">全部</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-item">
-                        <label for="reviewResultFilter">是否合格:</label>
-                        <select id="reviewResultFilter" class="filter-select">
                             <option value="">全部</option>
                         </select>
                     </div>

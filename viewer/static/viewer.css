@@ -1177,3 +1177,144 @@ h1 {
         transform: scale(0.98);
     }
 }
+
+/* 门店卡片样式 */
+.store-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.store-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.store-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.store-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    min-width: 80px;
+}
+
+.badge-count {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.badge-label {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.store-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-view-details, .btn-mark-done {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-view-details {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-view-details:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-mark-done {
+    background-color: #27ae60;
+    color: white;
+}
+
+.btn-mark-done:hover {
+    background-color: #229954;
+}
+
+.store-details-panel {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #ecf0f1;
+}
+
+.item-detail {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.item-detail:last-child {
+    margin-bottom: 0;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.btn-copy-item {
+    padding: 5px 12px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-copy-item:hover {
+    background-color: #2980b9;
+}
+
+.item-image {
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.item-image img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.item-problem {
+    background: #fff3cd;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 4px solid #ffc107;
+    margin-top: 10px;
+    color: #856404;
+}

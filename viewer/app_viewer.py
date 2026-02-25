@@ -249,11 +249,7 @@ def get_cities_by_province():
 @app.route('/api/search')
 def search_reviews():
     """
-    根据筛选条件搜索审核结果
-    支持多条件组合查询
-    支持门店编号精确搜索和门店名称模糊搜索
-    支持分页加载（每次最多返回100条，按门店分组）
-    Requirements: 1.4, 1.5
+    根据筛选条件搜索审核结果（按门店分组）
     """
     try:
         session = get_db_session()
@@ -265,75 +261,84 @@ def search_reviews():
         regional_manager = request.args.get('regional_manager', '').strip()
         operator = request.args.get('operator', '').strip()
         review_result = request.args.get('review_result', '').strip()
-        
-        # 获取门店搜索参数
         store_search = request.args.get('store_search', '').strip()
         
         # 获取分页参数
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 9))  # 每页9条记录
+        per_page = int(request.args.get('per_page', 20))  # 每页20个门店
         
-        # 构建查询
-        query = session.query(ViewerReviewResult)
+        # 构建查询（只查询不合格的）
+        from sqlalchemy import func, distinct
         
-        # 门店搜索：精确匹配门店编号或模糊匹配门店名称
+        # 先获取符合条件的门店ID列表
+        store_query = session.query(distinct(ViewerReviewResult.store_id))
+        
+        # 门店搜索
         if store_search:
-            query = query.filter(
+            store_query = store_query.filter(
                 (ViewerReviewResult.store_id == store_search) |
                 (ViewerReviewResult.store_name.like(f'%{store_search}%'))
             )
         
         # 应用筛选条件
         if war_zone:
-            query = query.filter(ViewerReviewResult.war_zone == war_zone)
-        
+            store_query = store_query.filter(ViewerReviewResult.war_zone == war_zone)
         if province:
-            query = query.filter(ViewerReviewResult.province == province)
-        
+            store_query = store_query.filter(ViewerReviewResult.province == province)
         if city:
-            query = query.filter(ViewerReviewResult.city == city)
+            store_query = store_query.filter(ViewerReviewResult.city == city)
         
-        if review_result:
-            query = query.filter(ViewerReviewResult.review_result == review_result)
+        # 只显示不合格的
+        store_query = store_query.filter(ViewerReviewResult.review_result == '不合格')
         
-        # 如果有区域经理或运营筛选，需要关联白名单表
+        # 如果有区域经理或运营筛选
         if regional_manager or operator:
-            from sqlalchemy import func
-            query = query.join(
+            store_query = store_query.join(
                 StoreWhitelist,
                 ViewerReviewResult.store_id == StoreWhitelist.store_id
             )
-            
             if regional_manager:
-                query = query.filter(StoreWhitelist.regional_manager == regional_manager)
-            
+                store_query = store_query.filter(StoreWhitelist.regional_manager == regional_manager)
             if operator:
-                query = query.filter(
+                store_query = store_query.filter(
                     func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator) == operator
                 )
         
-        # 获取总数
-        total_count = query.count()
+        # 获取总门店数
+        total_stores = store_query.count()
         
-        # 执行查询并排序，应用分页
-        results = query.order_by(
-            ViewerReviewResult.store_id,  # 先按门店分组
-            ViewerReviewResult.review_time.desc().nullslast(),
-            ViewerReviewResult.id.desc()
-        ).limit(per_page).offset((page - 1) * per_page).all()
+        # 分页获取门店ID
+        store_ids = [sid[0] for sid in store_query.limit(per_page).offset((page - 1) * per_page).all()]
         
-        # 转换为字典列表
-        results_data = [result.to_dict() for result in results]
+        # 获取这些门店的所有不合格项
+        results = session.query(ViewerReviewResult)\
+            .filter(ViewerReviewResult.store_id.in_(store_ids))\
+            .filter(ViewerReviewResult.review_result == '不合格')\
+            .order_by(ViewerReviewResult.store_id, ViewerReviewResult.id)\
+            .all()
         
-        # 计算总页数
-        total_pages = (total_count + per_page - 1) // per_page
+        # 按门店分组
+        stores_data = {}
+        for result in results:
+            if result.store_id not in stores_data:
+                stores_data[result.store_id] = {
+                    'store_id': result.store_id,
+                    'store_name': result.store_name,
+                    'war_zone': result.war_zone,
+                    'province': result.province,
+                    'city': result.city,
+                    'items': []
+                }
+            stores_data[result.store_id]['items'].append(result.to_dict())
+        
+        stores_list = list(stores_data.values())
+        total_pages = (total_stores + per_page - 1) // per_page
         
         return jsonify({
             'success': True,
             'data': {
-                'results': results_data,
-                'count': len(results_data),
-                'total_count': total_count,
+                'stores': stores_list,
+                'total_stores': total_stores,
                 'page': page,
                 'per_page': per_page,
                 'total_pages': total_pages,
