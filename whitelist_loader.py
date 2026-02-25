@@ -56,9 +56,28 @@ class WhitelistLoader:
             return
         
         for _, row in self.df.iterrows():
-            store_id = str(int(row['门店ID'])) if pd.notna(row['门店ID']) else None
+            # 安全地转换门店ID
+            store_id = None
+            raw_id = row.get('门店ID')
             
-            if store_id is None:
+            if pd.notna(raw_id):
+                try:
+                    # 尝试转换为整数
+                    if isinstance(raw_id, (int, float)):
+                        store_id = str(int(raw_id))
+                    else:
+                        # 如果是字符串，清理后再转换
+                        cleaned_id = str(raw_id).strip().replace('-', '').replace(' ', '')
+                        if cleaned_id.isdigit():
+                            store_id = cleaned_id
+                        else:
+                            # 如果包含非数字字符，直接使用原始值
+                            store_id = str(raw_id).strip()
+                except (ValueError, TypeError):
+                    # 转换失败，使用原始字符串
+                    store_id = str(raw_id).strip()
+            
+            if store_id is None or store_id == '':
                 continue
             
             # 确定负责运营人员（优先临时运营）
