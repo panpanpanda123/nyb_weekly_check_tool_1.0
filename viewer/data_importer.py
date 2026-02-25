@@ -56,8 +56,10 @@ class DataImporter:
             # 清空现有数据
             self.session.query(StoreWhitelist).delete()
             
-            # 导入数据
+            # 导入数据（使用字典去重，保留最后一条）
             records_count = 0
+            stores_dict = {}  # 用于去重
+            
             for _, row in df.iterrows():
                 # 兼容"门店ID"和"门店编号"两种列名
                 store_id_value = row.get('门店ID') if '门店ID' in df.columns else row.get('门店编号')
@@ -66,8 +68,21 @@ class DataImporter:
                 if pd.isna(store_id_value):
                     continue
                 
+                # 处理门店ID：清理可能的异常字符（如'-'）
+                try:
+                    # 如果是字符串，先清理非数字字符
+                    if isinstance(store_id_value, str):
+                        store_id_clean = store_id_value.strip().replace('-', '').replace(' ', '')
+                        store_id = str(int(store_id_clean))
+                    else:
+                        store_id = str(int(store_id_value))
+                except (ValueError, TypeError):
+                    # 如果转换失败，跳过这一行
+                    print(f"⚠️  跳过无效门店ID: {store_id_value}")
+                    continue
+                
                 store = StoreWhitelist(
-                    store_id=str(int(store_id_value)),
+                    store_id=store_id,
                     province=str(row.get('省份', '')) if pd.notna(row.get('省份')) else None,
                     city=str(row.get('城市', '')) if pd.notna(row.get('城市')) else None,
                     store_name=str(row.get('门店名称', '')) if pd.notna(row.get('门店名称')) else None,
@@ -81,6 +96,12 @@ class DataImporter:
                     business_status=str(row.get('门店营业状态', '')) if pd.notna(row.get('门店营业状态')) else None,
                     menu_version=str(row.get('菜单版本', '')) if pd.notna(row.get('菜单版本')) else None
                 )
+                
+                # 使用字典去重（如果有重复ID，保留最后一条）
+                stores_dict[store_id] = store
+            
+            # 批量添加去重后的门店
+            for store in stores_dict.values():
                 self.session.add(store)
                 records_count += 1
             
