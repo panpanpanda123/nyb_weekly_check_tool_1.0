@@ -68,12 +68,16 @@ class DataImporter:
                 if pd.isna(store_id_value):
                     continue
                 
-                # 处理门店ID：清理可能的异常字符（如'-'）
+                # 处理门店ID：跳过带'-'的异常门店ID
                 try:
-                    # 如果是字符串，先清理非数字字符
+                    # 如果是字符串且包含'-'，直接跳过
+                    if isinstance(store_id_value, str) and '-' in str(store_id_value):
+                        print(f"⚠️  跳过异常门店ID: {store_id_value}")
+                        continue
+                    
+                    # 正常转换为字符串
                     if isinstance(store_id_value, str):
-                        store_id_clean = store_id_value.strip().replace('-', '').replace(' ', '')
-                        store_id = str(int(store_id_clean))
+                        store_id = str(int(store_id_value.strip()))
                     else:
                         store_id = str(int(store_id_value))
                 except (ValueError, TypeError):
