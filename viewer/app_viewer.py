@@ -88,7 +88,7 @@ def admin_upload():
 def get_filters():
     """
     获取所有筛选选项
-    返回战区、省份、城市、门店标签、是否合格的选项列表
+    返回战区、省份、城市、区域经理、运营、是否合格的选项列表
     Requirements: 1.1
     """
     try:
@@ -121,6 +121,15 @@ def get_filters():
             .all()
         cities = [c[0] for c in cities]
         
+        # 获取区域经理列表（从白名单）
+        regional_managers = session.query(StoreWhitelist.regional_manager)\
+            .filter(StoreWhitelist.regional_manager.isnot(None))\
+            .filter(StoreWhitelist.regional_manager != '')\
+            .distinct()\
+            .order_by(StoreWhitelist.regional_manager)\
+            .all()
+        regional_managers = [rm[0] for rm in regional_managers]
+        
         # 获取运营列表（优先临时运营，其次省市运营）
         from sqlalchemy import func
         operators_query = session.query(
@@ -142,6 +151,7 @@ def get_filters():
                 'war_zones': war_zones,
                 'provinces': provinces,
                 'cities': cities,
+                'regional_managers': regional_managers,
                 'operators': operators,
                 'review_results': review_results
             }
@@ -252,6 +262,7 @@ def search_reviews():
         war_zone = request.args.get('war_zone', '').strip()
         province = request.args.get('province', '').strip()
         city = request.args.get('city', '').strip()
+        regional_manager = request.args.get('regional_manager', '').strip()
         operator = request.args.get('operator', '').strip()
         review_result = request.args.get('review_result', '').strip()
         
@@ -285,15 +296,21 @@ def search_reviews():
         if review_result:
             query = query.filter(ViewerReviewResult.review_result == review_result)
         
-        # 如果有运营筛选，需要关联白名单表（优先临时运营，其次省市运营）
-        if operator:
+        # 如果有区域经理或运营筛选，需要关联白名单表
+        if regional_manager or operator:
             from sqlalchemy import func
             query = query.join(
                 StoreWhitelist,
                 ViewerReviewResult.store_id == StoreWhitelist.store_id
-            ).filter(
-                func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator) == operator
             )
+            
+            if regional_manager:
+                query = query.filter(StoreWhitelist.regional_manager == regional_manager)
+            
+            if operator:
+                query = query.filter(
+                    func.coalesce(StoreWhitelist.temp_operator, StoreWhitelist.city_operator) == operator
+                )
         
         # 获取总数
         total_count = query.count()

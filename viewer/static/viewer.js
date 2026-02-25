@@ -8,6 +8,7 @@ let filterOptions = {
     war_zones: [],
     provinces: [],
     cities: [],
+    regional_managers: [],
     operators: [],
     review_results: []
 };
@@ -16,6 +17,7 @@ let currentFilters = {
     war_zone: '',
     province: '',
     city: '',
+    regional_manager: '',
     operator: '',
     review_result: '',
     store_search: ''
@@ -92,6 +94,9 @@ async function loadFilterOptions() {
             
             // 填充战区下拉菜单
             populateSelect('warZoneFilter', filterOptions.war_zones);
+            
+            // 填充区域经理下拉菜单
+            populateSelect('regionalManagerFilter', filterOptions.regional_managers);
             
             // 填充运营下拉菜单
             populateSelect('operatorFilter', filterOptions.operators);
@@ -214,6 +219,11 @@ function bindEvents() {
     // 城市选择变化
     document.getElementById('cityFilter').addEventListener('change', function(e) {
         currentFilters.city = e.target.value;
+    });
+    
+    // 区域经理选择变化
+    document.getElementById('regionalManagerFilter').addEventListener('change', function(e) {
+        currentFilters.regional_manager = e.target.value;
     });
     
     // 运营选择变化
@@ -383,6 +393,7 @@ async function loadSearchResults() {
         if (currentFilters.war_zone) params.append('war_zone', currentFilters.war_zone);
         if (currentFilters.province) params.append('province', currentFilters.province);
         if (currentFilters.city) params.append('city', currentFilters.city);
+        if (currentFilters.regional_manager) params.append('regional_manager', currentFilters.regional_manager);
         if (currentFilters.operator) params.append('operator', currentFilters.operator);
         if (currentFilters.review_result) params.append('review_result', currentFilters.review_result);
         if (currentFilters.store_search) params.append('store_search', currentFilters.store_search);
@@ -498,6 +509,7 @@ function clearFilters() {
         war_zone: '',
         province: '',
         city: '',
+        regional_manager: '',
         operator: '',
         review_result: '',
         store_search: ''
@@ -511,6 +523,7 @@ function clearFilters() {
     document.getElementById('warZoneFilter').value = '';
     document.getElementById('provinceFilter').value = '';
     document.getElementById('cityFilter').value = '';
+    document.getElementById('regionalManagerFilter').value = '';
     document.getElementById('operatorFilter').value = '';
     document.getElementById('reviewResultFilter').value = '';
     
