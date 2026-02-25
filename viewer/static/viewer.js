@@ -1,7 +1,8 @@
 // 审核结果展示系统前端逻辑
 
 // API 基础路径配置（根据部署路径调整）
-const API_BASE_PATH = '/weeklycheck';
+// 本地测试时为空，服务器部署时为 '/weeklycheck'
+const API_BASE_PATH = window.location.hostname === 'weeklycheck.blitzepanda.top' ? '/weeklycheck' : '';
 
 // 全局状态
 let filterOptions = {
