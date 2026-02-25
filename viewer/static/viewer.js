@@ -788,11 +788,11 @@ function toggleStoreDetails(card, store) {
             <div class="item-detail">
                 <div class="item-header">
                     <span class="item-name">📋 ${escapeHtml(item.item_name)}</span>
-                    <button class="btn-copy-item" onclick="copyItemInfo(event, ${JSON.stringify(item).replace(/"/g, '&quot;')})">📋 复制</button>
+                    <button class="btn-copy-item">📋 复制</button>
                 </div>
                 ${item.image_url ? `
-                    <div class="item-image" onclick="openImageModal('${escapeHtml(item.image_url)}', '${escapeHtml(store.store_name)} - ${escapeHtml(item.item_name)}')">
-                        <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.item_name)}" loading="lazy">
+                    <div class="item-image">
+                        <img alt="${escapeHtml(item.item_name)}" loading="lazy" referrerpolicy="no-referrer">
                     </div>
                 ` : ''}
                 ${item.problem_note ? `
@@ -800,6 +800,41 @@ function toggleStoreDetails(card, store) {
                 ` : ''}
             </div>
         `).join('');
+        
+        // 设置图片src和事件
+        panel.querySelectorAll('.item-detail').forEach((itemEl, index) => {
+            const item = store.items[index];
+            
+            // 设置复制按钮事件
+            const copyBtn = itemEl.querySelector('.btn-copy-item');
+            if (copyBtn) {
+                copyBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    copyItemInfo(item);
+                };
+            }
+            
+            // 设置图片
+            const img = itemEl.querySelector('img');
+            if (img && item.image_url) {
+                img.crossOrigin = 'anonymous';
+                img.src = item.image_url;
+                
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'image-error';
+                    errorDiv.textContent = '❌ 图片加载失败';
+                    this.parentElement.appendChild(errorDiv);
+                };
+                
+                // 点击图片打开模态框
+                itemEl.querySelector('.item-image').onclick = function() {
+                    openImageModal(item.image_url, store.store_name + ' - ' + item.item_name);
+                };
+            }
+        });
+        
         panel.style.display = 'block';
         btn.textContent = '🔼 收起详情';
     } else {
@@ -848,8 +883,7 @@ function markStoreAsProcessed(storeId, cardElement) {
 /**
  * 复制单个检查项信息
  */
-function copyItemInfo(event, item) {
-    event.stopPropagation();
+function copyItemInfo(item) {
     const textContent = `【不合格项目】
 门店编号：${item.store_id}
 门店名称：${item.store_name}
