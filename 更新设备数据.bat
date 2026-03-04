@@ -4,9 +4,13 @@ echo ========================================
 echo 更新设备异常数据到服务器
 echo ========================================
 echo.
+echo ⚠️  注意：需要配置SSH密钥或输入密码
+echo    如果连接失败，请使用手动上传方式
+echo    参考：手动更新设备数据指南.md
+echo.
 
 REM 设置服务器信息
-set SERVER=root@blitzepanda.top
+set SERVER=root@139.224.200.133
 set PROJECT_DIR=/var/www/nyb_weekly_check_tool_1.0
 
 echo 📁 检查本地数据文件...

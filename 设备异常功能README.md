@@ -15,29 +15,33 @@
 ### 首次部署
 
 1. 提交代码：`git push`
-2. 服务器执行：`./deploy_equipment.sh`
-3. 访问测试
+2. 手动上传到服务器（参考：`手动更新设备数据指南.md`）
+3. SSH登录执行：`./deploy_equipment.sh`
+4. 访问测试
 
-详细步骤见：`设备异常功能部署指南.md`
+### 日常更新数据（推荐手动方式）
 
-### 日常更新数据
+1. 下载新表格
+2. 用WinSCP上传到服务器 `/var/www/nyb_weekly_check_tool_1.0/equipment_status/`
+3. SSH登录执行：`python3 import_equipment_data.py`
+4. 完成！
 
-1. 下载新表格放到 `equipment_status/` 文件夹
-2. 运行 `更新设备数据.bat`
-3. 完成！
+详细步骤见：`手动更新设备数据指南.md`
 
 ## 📋 服务器信息
 
-- **地址**: root@blitzepanda.top
+- **IP地址**: 139.224.200.133
+- **用户名**: root
 - **项目**: /var/www/nyb_weekly_check_tool_1.0
 - **服务**: review-viewer
 - **端口**: 8000
 
 ## 📁 文件说明
 
-- `设备异常功能部署指南.md` - 完整部署和使用指南
-- `更新设备数据.bat` - Windows更新脚本
-- `更新设备数据.sh` - Linux/Mac更新脚本
+- `手动更新设备数据指南.md` - **推荐阅读**：手动上传和更新教程
+- `设备异常功能部署指南.md` - 完整部署指南
+- `更新设备数据.bat` - 自动更新脚本（需配置SSH密钥）
+- `更新设备数据.sh` - Linux/Mac自动更新脚本
 - `deploy_equipment.sh` - 服务器部署脚本
 - `import_equipment_data.py` - 数据导入脚本
 
@@ -53,11 +57,14 @@
 ## 📞 快速命令
 
 ```bash
-# 更新数据
-更新设备数据.bat
+# SSH登录（用密码）
+ssh root@139.224.200.133
 
-# SSH登录
-ssh root@blitzepanda.top
+# 进入项目目录
+cd /var/www/nyb_weekly_check_tool_1.0
+
+# 导入设备数据
+python3 import_equipment_data.py
 
 # 查看服务
 systemctl status review-viewer
@@ -65,6 +72,12 @@ systemctl status review-viewer
 # 查看日志
 journalctl -u review-viewer -n 100
 ```
+
+## 💡 推荐工具
+
+- **WinSCP** - 文件上传+SSH终端，最方便
+- **FileZilla** - 纯文件上传
+- **PuTTY** - 纯SSH终端
 
 ## 💡 提示
 
