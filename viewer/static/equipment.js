@@ -287,8 +287,7 @@ function renderProcessingSection(store) {
     if (store.processing) {
         const p = store.processing;
         let badgeClass = 'status-processed';
-        if (p.action === '不配合') badgeClass = 'status-not-cooperate';
-        if (p.action === '特殊情况') badgeClass = 'status-special';
+        if (p.action === '未恢复') badgeClass = 'status-special';
         
         return `
             <div class="processing-status ${badgeClass}">
@@ -301,12 +300,11 @@ function renderProcessingSection(store) {
     
     return `
         <div class="processing-actions">
-            <button class="action-btn btn-processed" data-action="已处理">✓ 已处理</button>
-            <button class="action-btn btn-not-cooperate" data-action="不配合">✗ 不配合</button>
-            <button class="action-btn btn-special">⚠ 特殊情况</button>
+            <button class="action-btn btn-processed" data-action="已恢复">✓ 已恢复</button>
+            <button class="action-btn btn-special">⚠ 未恢复</button>
         </div>
         <div class="reason-input-container" style="display:none;">
-            <input type="text" class="reason-input" placeholder="请输入特殊情况理由..." />
+            <input type="text" class="reason-input" placeholder="请输入未恢复原因..." />
             <button class="reason-submit-btn">提交</button>
             <button class="reason-cancel-btn">取消</button>
         </div>
@@ -326,7 +324,7 @@ function bindProcessingEvents() {
         });
     });
     
-    // 特殊情况按钮
+    // 未恢复按钮
     document.querySelectorAll('.btn-special').forEach(btn => {
         btn.addEventListener('click', function() {
             const card = this.closest('.store-card');
@@ -347,12 +345,12 @@ function bindProcessingEvents() {
             const reason = reasonInput.value.trim();
             
             if (!reason) {
-                showToast('请输入特殊情况理由', 'error');
+                showToast('请输入未恢复原因', 'error');
                 return;
             }
             
             const storeId = card.dataset.storeId;
-            await processEquipment(storeId, '特殊情况', reason);
+            await processEquipment(storeId, '未恢复', reason);
         });
     });
     

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试设备异常按钮</title>
+</head>
+<body>
+    <h1>测试设备异常按钮</h1>
+    <button id="equipmentTab">🔧 设备异常</button>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const equipmentTab = document.getElementById('equipmentTab');
+            console.log('equipmentTab元素:', equipmentTab);
+            
+            if (equipmentTab) {
+                equipmentTab.addEventListener('click', function() {
+                    console.log('设备异常按钮被点击');
+                    alert('跳转到 /equipment');
+                    window.location.href = '/equipment';
+                });
+                console.log('事件监听器已绑定');
+            } else {
+                console.error('找不到equipmentTab元素');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -116,10 +116,13 @@ print()
 # 5. 处理收银设备数据
 print("📥 处理收银设备数据...")
 try:
-    # 先清空旧数据
-    print("   清空旧设备数据...")
+    # 先清空旧数据和处理记录
+    print("   清空旧设备数据和处理记录...")
+    from shared.database_models import EquipmentProcessing
+    session.query(EquipmentProcessing).delete()
     session.query(EquipmentStatus).delete()
     session.commit()
+    print("   ✅ 已清空旧数据和处理记录")
     
     df_pos = pd.read_excel(pos_file, header=1)
     

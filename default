@@ -1,5 +1,5 @@
 # nginx配置 - 多项目管理
-# 更新时间: 2026-02-04
+# 更新时间: 2026-02-05
 
 server {
     
@@ -27,9 +27,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
     
-    # 评级系统静态文件
+    # 评级系统静态文件（改路径）
     location /static/ {
-        alias /opt/review-result-viewer/viewer/static/;
+        alias /var/www/review-result-viewer/viewer/static/;
         expires 7d;
         add_header Cache-Control "public, immutable";
     }
@@ -73,17 +73,65 @@ server {
 
 }
 
-
+# 周清审核系统（子域名）- 已填好你的证书路径
 server {
-    if ($host = blitzepanda.top) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
+    server_name weeklycheck.blitzepanda.top;
+    
+    # 解决Certbot认证失败的ACME验证路径（必须保留）
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+    }
+    
+    # 根路径代理到后端8000端口
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+    
+    # API路径代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # 静态文件路径
+    location /static/ {
+        alias /var/www/nyb_weekly_check_tool_1.0/viewer/static/;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
 
-
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name blitzepanda.top 139.224.200.133 _;
-    return 404; # managed by Certbot
-
-
+    listen 443 ssl;
+    # 你的证书路径（已填好，不用改）
+    ssl_certificate /etc/nginx/ssl/weeklycheck.blitzepanda.top.pem;
+    ssl_certificate_key /etc/nginx/ssl/weeklycheck.blitzepanda.top.key;
+    # 复用Certbot的SSL通用配置（和主域名一致，不用改）
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
+
+# 子域名80端口重定向（配套保留）
+server {
+    if ($host = weeklycheck.blitzepanda.top) {
+        return 301 https://$host$request_uri;
+    }
+    
+    listen 80;
+    server_name weeklycheck.blitzepanda.top;
+    # 同样加ACME验证路径
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        try_files $uri =404;
+    }
+    return 404;
+}
+
