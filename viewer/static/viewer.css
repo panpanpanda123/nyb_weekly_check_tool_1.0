@@ -1377,13 +1377,14 @@ h1 {
 
 .action-btn {
     flex: 1;
-    padding: 8px 12px;
+    padding: 10px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
+    min-height: 44px;
 }
 
 .btn-processed {
@@ -1395,6 +1396,10 @@ h1 {
     background: #218838;
 }
 
+.btn-processed:active {
+    transform: scale(0.98);
+}
+
 .btn-not-cooperate {
     background: #dc3545;
     color: white;
@@ -1402,6 +1407,10 @@ h1 {
 
 .btn-not-cooperate:hover {
     background: #c82333;
+}
+
+.btn-not-cooperate:active {
+    transform: scale(0.98);
 }
 
 .btn-special {
@@ -1413,29 +1422,43 @@ h1 {
     background: #e0a800;
 }
 
+.btn-special:active {
+    transform: scale(0.98);
+}
+
 .reason-input-container {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .reason-input {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 13px;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.reason-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .reason-submit-btn,
 .reason-cancel-btn {
-    padding: 8px 16px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
+    min-height: 44px;
 }
 
 .reason-submit-btn {
@@ -1447,6 +1470,10 @@ h1 {
     background: #0056b3;
 }
 
+.reason-submit-btn:active {
+    transform: scale(0.98);
+}
+
 .reason-cancel-btn {
     background: #6c757d;
     color: white;
@@ -1456,10 +1483,15 @@ h1 {
     background: #545b62;
 }
 
+.reason-cancel-btn:active {
+    transform: scale(0.98);
+}
+
 .processing-status {
-    padding: 10px 15px;
-    border-radius: 4px;
+    padding: 12px 15px;
+    border-radius: 6px;
     margin-bottom: 8px;
+    font-size: 14px;
 }
 
 .processing-status.status-processed {
@@ -1479,17 +1511,19 @@ h1 {
 
 .status-label {
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .status-reason {
     color: #666;
     font-size: 13px;
+    margin-left: 4px;
 }
 
 .processing-time {
     font-size: 12px;
     color: #999;
+    margin-top: 4px;
 }
 
 .pagination-container {
@@ -1504,23 +1538,31 @@ h1 {
 }
 
 .pagination-btn {
-    padding: 8px 20px;
+    padding: 10px 24px;
     background: #007bff;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
+    min-height: 44px;
 }
 
 .pagination-btn:hover:not(:disabled) {
     background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.pagination-btn:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
 .pagination-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .page-info {
@@ -1530,16 +1572,388 @@ h1 {
 }
 
 .export-btn {
-    padding: 8px 20px;
+    padding: 10px 24px;
     background: #28a745;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
+    min-height: 44px;
 }
 
 .export-btn:hover {
     background: #218838;
+    transform: translateY(-1px);
+}
+
+.export-btn:active {
+    transform: scale(0.98);
+}
+
+/* ==================== 移动端设备异常优化 ==================== */
+
+@media (max-width: 768px) {
+    /* 功能选项卡移动端优化 */
+    .function-tabs {
+        gap: 6px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+    }
+    
+    .function-tabs .tab-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        flex: 1;
+    }
+    
+    /* 门店卡片移动端优化 */
+    .store-card {
+        padding: 15px;
+        border-radius: 10px;
+    }
+    
+    .store-card-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .store-info {
+        width: 100%;
+    }
+    
+    .store-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    
+    .store-id {
+        font-size: 13px;
+        color: #666;
+    }
+    
+    .store-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+    }
+    
+    .badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge-war-zone {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .badge-manager {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .badge-count {
+        background: #ffebee;
+        color: #c62828;
+        font-weight: 600;
+    }
+    
+    .store-badge {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .badge-count {
+        font-size: 20px;
+    }
+    
+    .badge-label {
+        font-size: 13px;
+        margin-top: 0;
+    }
+    
+    /* 设备列表移动端优化 */
+    .equipment-list-items {
+        gap: 6px;
+        margin-top: 12px;
+    }
+    
+    .equipment-item-inline {
+        padding: 8px 12px;
+        font-size: 13px;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .equipment-type-badge {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+    
+    .equipment-status-badge {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+    
+    .equipment-name-text {
+        font-size: 13px;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* 处理按钮移动端优化 */
+    .processing-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .action-btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    /* 原因输入移动端优化 */
+    .reason-input-container {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .reason-input {
+        width: 100%;
+        min-width: auto;
+        padding: 12px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    .reason-submit-btn,
+    .reason-cancel-btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    /* 处理状态移动端优化 */
+    .processing-status {
+        padding: 12px;
+    }
+    
+    .status-label {
+        font-size: 14px;
+        display: block;
+        margin-bottom: 4px;
+    }
+    
+    .status-reason {
+        font-size: 13px;
+        display: block;
+        margin-left: 0;
+        margin-top: 4px;
+    }
+    
+    .processing-time {
+        font-size: 11px;
+        margin-top: 6px;
+    }
+    
+    /* 门店操作按钮移动端优化 */
+    .store-card-actions {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    
+    .btn-view-details,
+    .btn-mark-done {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    /* 分页移动端优化 */
+    .pagination-container {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 15px;
+    }
+    
+    .pagination-btn {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px 20px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    .page-info {
+        width: 100%;
+        text-align: center;
+        font-size: 13px;
+        order: -1;
+    }
+    
+    /* 导出按钮移动端优化 */
+    .export-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+        min-height: 48px;
+    }
+    
+    /* 门店详情面板移动端优化 */
+    .store-details-panel {
+        margin-top: 12px;
+        padding-top: 12px;
+    }
+    
+    .item-detail {
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    
+    .item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .item-name {
+        font-size: 14px;
+    }
+    
+    .btn-copy-item {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 40px;
+    }
+    
+    .item-image img {
+        max-height: 250px;
+    }
+    
+    .item-problem {
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* 小屏手机设备异常优化 */
+@media (max-width: 480px) {
+    .store-card {
+        padding: 12px;
+    }
+    
+    .store-name {
+        font-size: 15px;
+    }
+    
+    .store-id {
+        font-size: 12px;
+    }
+    
+    .badge {
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+    
+    .equipment-item-inline {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .equipment-type-badge,
+    .equipment-status-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .equipment-name-text {
+        font-size: 12px;
+    }
+    
+    .action-btn {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+    
+    .reason-input {
+        font-size: 14px;
+        padding: 10px;
+    }
+    
+    .reason-submit-btn,
+    .reason-cancel-btn {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+    
+    .btn-view-details,
+    .btn-mark-done {
+        font-size: 14px;
+        padding: 10px;
+    }
+    
+    .pagination-btn {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+    
+    .export-btn {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+}
+
+/* 触摸设备设备异常优化 */
+@media (hover: none) and (pointer: coarse) {
+    .action-btn,
+    .reason-submit-btn,
+    .reason-cancel-btn,
+    .btn-view-details,
+    .btn-mark-done,
+    .pagination-btn,
+    .export-btn {
+        min-height: 48px;
+    }
+    
+    .reason-input {
+        min-height: 48px;
+        font-size: 16px;
+        /* iOS 避免自动缩放 */
+    }
+    
+    /* 移除悬停效果 */
+    .store-card:hover {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 点击反馈 */
+    .action-btn:active,
+    .btn-view-details:active,
+    .btn-mark-done:active,
+    .pagination-btn:active:not(:disabled),
+    .export-btn:active {
+        transform: scale(0.97);
+    }
+    
+    .store-card:active {
+        transform: scale(0.99);
+    }
 }
