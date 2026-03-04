@@ -229,6 +229,86 @@ class StoreOperationData(Base):
         }
 
 
+class EquipmentStatus(Base):
+    """设备异常状态模型"""
+    __tablename__ = 'equipment_status'
+    
+    # 主键
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    
+    # 门店信息
+    store_id = Column(String(50), nullable=False, index=True, comment='门店ID')
+    store_name = Column(String(255), comment='门店名称')
+    war_zone = Column(String(50), comment='战区')
+    regional_manager = Column(String(50), comment='区域经理')
+    
+    # 设备信息
+    equipment_type = Column(String(50), nullable=False, comment='设备类型：POS/机顶盒')
+    equipment_id = Column(String(100), comment='设备编号')
+    equipment_name = Column(String(255), comment='设备名称')
+    status = Column(String(50), comment='设备状态')
+    
+    # 导入时间
+    import_time = Column(DateTime, default=datetime.now, comment='导入时间')
+    
+    __table_args__ = (
+        Index('idx_equipment_store', 'store_id'),
+        Index('idx_equipment_war_zone', 'war_zone'),
+        Index('idx_equipment_regional_manager', 'regional_manager'),
+        Index('idx_equipment_type', 'equipment_type'),
+        {'comment': '设备异常状态表'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'store_id': self.store_id,
+            'store_name': self.store_name or '',
+            'war_zone': self.war_zone or '',
+            'regional_manager': self.regional_manager or '',
+            'equipment_type': self.equipment_type,
+            'equipment_id': self.equipment_id or '',
+            'equipment_name': self.equipment_name or '',
+            'status': self.status or '',
+            'import_time': self.import_time.strftime('%Y-%m-%d %H:%M:%S') if self.import_time else ''
+        }
+
+
+class EquipmentProcessing(Base):
+    """设备异常处理记录模型"""
+    __tablename__ = 'equipment_processing'
+    
+    # 主键
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    
+    # 门店信息
+    store_id = Column(String(50), nullable=False, index=True, comment='门店ID')
+    
+    # 处理信息
+    action = Column(String(50), nullable=False, comment='处理动作：已处理/不配合/特殊情况')
+    reason = Column(Text, comment='特殊情况理由')
+    processed_at = Column(DateTime, default=datetime.now, comment='处理时间')
+    processed_by = Column(String(100), comment='处理人')
+    
+    __table_args__ = (
+        Index('idx_processing_store', 'store_id'),
+        Index('idx_processing_action', 'action'),
+        {'comment': '设备异常处理记录表'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'store_id': self.store_id,
+            'action': self.action,
+            'reason': self.reason or '',
+            'processed_at': self.processed_at.strftime('%Y-%m-%d %H:%M:%S') if self.processed_at else '',
+            'processed_by': self.processed_by or ''
+        }
+
+
 def init_viewer_db(engine):
     """
     初始化展示系统数据库表
@@ -242,3 +322,5 @@ def init_viewer_db(engine):
     print(f"  - 表名: {ViewerReviewResult.__tablename__}")
     print(f"  - 表名: {StoreRating.__tablename__}")
     print(f"  - 表名: {StoreOperationData.__tablename__}")
+    print(f"  - 表名: {EquipmentStatus.__tablename__}")
+    print(f"  - 表名: {EquipmentProcessing.__tablename__}")

@@ -1318,3 +1318,228 @@ h1 {
     margin-top: 10px;
     color: #856404;
 }
+
+
+/* ==================== 设备异常监控样式 ==================== */
+
+.equipment-list-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.equipment-item-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.equipment-type-badge {
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+}
+
+.equipment-type-badge.type-pos {
+    background: #007bff;
+}
+
+.equipment-type-badge.type-stb {
+    background: #6c757d;
+}
+
+.equipment-status-badge {
+    padding: 2px 8px;
+    background: #dc3545;
+    color: white;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.equipment-name-text {
+    color: #666;
+    font-size: 12px;
+}
+
+.processing-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-processed {
+    background: #28a745;
+    color: white;
+}
+
+.btn-processed:hover {
+    background: #218838;
+}
+
+.btn-not-cooperate {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-not-cooperate:hover {
+    background: #c82333;
+}
+
+.btn-special {
+    background: #ffc107;
+    color: #000;
+}
+
+.btn-special:hover {
+    background: #e0a800;
+}
+
+.reason-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.reason-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.reason-submit-btn,
+.reason-cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.reason-submit-btn {
+    background: #007bff;
+    color: white;
+}
+
+.reason-submit-btn:hover {
+    background: #0056b3;
+}
+
+.reason-cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.reason-cancel-btn:hover {
+    background: #545b62;
+}
+
+.processing-status {
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.processing-status.status-processed {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.processing-status.status-not-cooperate {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+}
+
+.processing-status.status-special {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.status-label {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.status-reason {
+    color: #666;
+    font-size: 13px;
+}
+
+.processing-time {
+    font-size: 12px;
+    color: #999;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.pagination-btn {
+    padding: 8px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.pagination-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.export-btn {
+    padding: 8px 20px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.export-btn:hover {
+    background: #218838;
+}

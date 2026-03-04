@@ -82,6 +82,14 @@ function populateSelect(selectId, options) {
  * 绑定事件
  */
 function bindEvents() {
+    // 选项卡切换
+    document.getElementById('reviewTab').addEventListener('click', function() {
+        window.location.href = '/';
+    });
+    document.getElementById('equipmentTab').addEventListener('click', function() {
+        window.location.href = '/equipment';
+    });
+    
     // 战区选择变化 - 级联更新区域经理
     document.getElementById('warZoneFilter').addEventListener('change', async function(e) {
         const warZone = e.target.value;

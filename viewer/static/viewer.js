@@ -65,7 +65,14 @@ function bindFunctionTabs() {
     
     if (ratingTab) {
         ratingTab.addEventListener('click', function() {
-            window.location.href = '/weeklycheck/rating';
+            window.location.href = '/rating';
+        });
+    }
+    
+    const equipmentTab = document.getElementById('equipmentTab');
+    if (equipmentTab) {
+        equipmentTab.addEventListener('click', function() {
+            window.location.href = '/equipment';
         });
     }
 }

@@ -5,6 +5,7 @@ Review Result Viewer Flask Application
 import sys
 import os
 from pathlib import Path
+from datetime import datetime
 
 # 添加项目根目录到 Python 路径（解决模块导入问题）
 current_dir = Path(__file__).resolve().parent
@@ -76,6 +77,12 @@ def index():
 def rating():
     """门店评级页面"""
     return render_template('rating.html')
+
+
+@app.route('/equipment')
+def equipment():
+    """设备异常监控页面"""
+    return render_template('equipment.html')
 
 
 @app.route('/admin/upload')
@@ -926,6 +933,280 @@ def export_ratings():
         )
         
         return response
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'导出失败: {str(e)}'
+        }), 500
+
+
+# ==================== 设备异常监控 API ====================
+
+@app.route('/api/equipment/filters')
+def get_equipment_filters():
+    """获取设备异常筛选选项"""
+    try:
+        from shared.database_models import EquipmentStatus
+        session = get_db_session()
+        
+        # 获取战区列表
+        war_zones = session.query(EquipmentStatus.war_zone)\
+            .filter(EquipmentStatus.war_zone.isnot(None))\
+            .filter(EquipmentStatus.war_zone != '')\
+            .distinct()\
+            .order_by(EquipmentStatus.war_zone)\
+            .all()
+        war_zones = [wz[0] for wz in war_zones]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'war_zones': war_zones
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取筛选选项失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/equipment/regional-managers')
+def get_equipment_regional_managers():
+    """根据战区获取区域经理列表"""
+    try:
+        from shared.database_models import EquipmentStatus
+        session = get_db_session()
+        
+        war_zone = request.args.get('war_zone', '').strip()
+        
+        if not war_zone:
+            return jsonify({
+                'success': False,
+                'error': '缺少战区参数'
+            }), 400
+        
+        # 根据战区获取区域经理列表
+        regional_managers = session.query(EquipmentStatus.regional_manager)\
+            .filter(EquipmentStatus.war_zone == war_zone)\
+            .filter(EquipmentStatus.regional_manager.isnot(None))\
+            .filter(EquipmentStatus.regional_manager != '')\
+            .distinct()\
+            .order_by(EquipmentStatus.regional_manager)\
+            .all()
+        regional_managers = [rm[0] for rm in regional_managers]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'regional_managers': regional_managers
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取区域经理列表失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/equipment/search')
+def search_equipment():
+    """搜索设备异常（按门店分组）"""
+    try:
+        from shared.database_models import EquipmentStatus, EquipmentProcessing
+        session = get_db_session()
+        
+        # 获取筛选参数
+        war_zone = request.args.get('war_zone', '').strip()
+        regional_manager = request.args.get('regional_manager', '').strip()
+        store_search = request.args.get('store_search', '').strip()
+        
+        # 获取分页参数
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        # 构建查询
+        from sqlalchemy import func, distinct
+        
+        # 先获取符合条件的门店ID列表
+        store_query = session.query(distinct(EquipmentStatus.store_id))
+        
+        # 门店搜索
+        if store_search:
+            store_query = store_query.filter(
+                (EquipmentStatus.store_id == store_search) |
+                (EquipmentStatus.store_name.like(f'%{store_search}%'))
+            )
+        
+        # 应用筛选条件
+        if war_zone:
+            store_query = store_query.filter(EquipmentStatus.war_zone == war_zone)
+        if regional_manager:
+            store_query = store_query.filter(EquipmentStatus.regional_manager == regional_manager)
+        
+        # 获取总门店数
+        total_stores = store_query.count()
+        
+        # 分页获取门店ID
+        store_ids = [sid[0] for sid in store_query.limit(per_page).offset((page - 1) * per_page).all()]
+        
+        # 获取这些门店的所有设备异常
+        equipment_list = session.query(EquipmentStatus)\
+            .filter(EquipmentStatus.store_id.in_(store_ids))\
+            .order_by(EquipmentStatus.store_id, EquipmentStatus.id)\
+            .all()
+        
+        # 获取处理记录
+        processing_records = session.query(EquipmentProcessing)\
+            .filter(EquipmentProcessing.store_id.in_(store_ids))\
+            .all()
+        processing_dict = {p.store_id: p.to_dict() for p in processing_records}
+        
+        # 按门店分组
+        stores_data = {}
+        for equipment in equipment_list:
+            if equipment.store_id not in stores_data:
+                stores_data[equipment.store_id] = {
+                    'store_id': equipment.store_id,
+                    'store_name': equipment.store_name,
+                    'war_zone': equipment.war_zone,
+                    'regional_manager': equipment.regional_manager,
+                    'equipment': [],
+                    'processing': processing_dict.get(equipment.store_id)
+                }
+            stores_data[equipment.store_id]['equipment'].append(equipment.to_dict())
+        
+        stores_list = list(stores_data.values())
+        total_pages = (total_stores + per_page - 1) // per_page
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'stores': stores_list,
+                'total_stores': total_stores,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages,
+                'has_more': page < total_pages
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'搜索失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/equipment/process', methods=['POST'])
+def process_equipment():
+    """处理设备异常"""
+    try:
+        from shared.database_models import EquipmentProcessing
+        session = get_db_session()
+        
+        data = request.get_json()
+        store_id = data.get('store_id')
+        action = data.get('action')  # 已处理/不配合/特殊情况
+        reason = data.get('reason', '')
+        
+        if not store_id or not action:
+            return jsonify({
+                'success': False,
+                'error': '缺少必要参数'
+            }), 400
+        
+        # 检查是否已存在处理记录
+        existing = session.query(EquipmentProcessing)\
+            .filter(EquipmentProcessing.store_id == store_id)\
+            .first()
+        
+        if existing:
+            # 更新现有记录
+            existing.action = action
+            existing.reason = reason
+            existing.processed_at = datetime.now()
+        else:
+            # 创建新记录
+            processing = EquipmentProcessing(
+                store_id=store_id,
+                action=action,
+                reason=reason
+            )
+            session.add(processing)
+        
+        session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '处理成功'
+        })
+        
+    except Exception as e:
+        session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'处理失败: {str(e)}'
+        }), 500
+
+
+@app.route('/api/equipment/export')
+def export_equipment():
+    """导出设备异常处理结果"""
+    try:
+        from shared.database_models import EquipmentStatus, EquipmentProcessing
+        import pandas as pd
+        from io import BytesIO
+        from flask import send_file
+        
+        session = get_db_session()
+        
+        # 获取所有设备异常和处理记录
+        equipment_list = session.query(EquipmentStatus).all()
+        processing_list = session.query(EquipmentProcessing).all()
+        
+        # 创建处理记录字典
+        processing_dict = {p.store_id: p for p in processing_list}
+        
+        # 准备导出数据
+        export_data = []
+        for equipment in equipment_list:
+            processing = processing_dict.get(equipment.store_id)
+            export_data.append({
+                '门店ID': equipment.store_id,
+                '门店名称': equipment.store_name,
+                '战区': equipment.war_zone,
+                '区域经理': equipment.regional_manager,
+                '设备类型': equipment.equipment_type,
+                '设备编号': equipment.equipment_id,
+                '设备名称': equipment.equipment_name,
+                '设备状态': equipment.status,
+                '处理动作': processing.action if processing else '',
+                '特殊情况理由': processing.reason if processing else '',
+                '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else ''
+            })
+        
+        # 创建DataFrame
+        df = pd.DataFrame(export_data)
+        
+        # 生成Excel文件
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='设备异常处理结果')
+        output.seek(0)
+        
+        # 生成文件名
+        filename = f'设备异常处理结果_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
         
     except Exception as e:
         return jsonify({

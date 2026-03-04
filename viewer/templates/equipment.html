@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备异常监控</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260304">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 设备异常监控</h1>
+            
+            <!-- 功能选项卡 -->
+            <div class="function-tabs">
+                <button id="reviewTab" class="tab-btn">📝 周清审核</button>
+                <button id="ratingTab" class="tab-btn">⭐ 门店评级</button>
+                <button id="equipmentTab" class="tab-btn active">🔧 设备异常</button>
+            </div>
+            
+            <!-- 搜索区域 -->
+            <div class="search-section">
+                <label for="storeSearch">🔍 搜索门店:</label>
+                <input type="text" id="storeSearch" class="store-search" placeholder="输入门店编号（精确）或门店名称（模糊）">
+                <button id="storeSearchBtn" class="search-btn">搜索</button>
+                <button id="clearStoreSearchBtn" class="clear-search-btn" style="display:none;">✕ 清除</button>
+            </div>
+            
+            <!-- 筛选区域 -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-item">
+                        <label for="warZoneFilter">战区:</label>
+                        <select id="warZoneFilter" class="filter-select">
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <label for="regionalManagerFilter">区域经理:</label>
+                        <select id="regionalManagerFilter" class="filter-select" disabled>
+                            <option value="">全部</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button id="searchBtn" class="search-btn">🔍 搜索</button>
+                    <button id="clearBtn" class="clear-btn">✕ 清除筛选</button>
+                    <button id="exportBtn" class="export-btn">📥 导出</button>
+                    <span id="resultCount" class="result-count">异常门店: 0</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- 结果展示区域 -->
+        <main id="resultsContainer">
+            <div class="welcome-message">
+                <div class="welcome-icon">🔧</div>
+                <h2>欢迎使用设备异常监控系统</h2>
+                <p>请选择筛选条件并点击"搜索"按钮查看设备异常</p>
+            </div>
+        </main>
+        
+        <!-- 分页控制 -->
+        <div id="paginationContainer" class="pagination-container" style="display:none;">
+            <button id="prevPage" class="pagination-btn">← 上一页</button>
+            <span id="pageInfo" class="page-info">第 1 / 1 页</span>
+            <button id="nextPage" class="pagination-btn">下一页 →</button>
+        </div>
+    </div>
+    
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+    
+    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260304"></script>
+</body>
+</html>
