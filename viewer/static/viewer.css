@@ -34,6 +34,20 @@ h1 {
     margin-bottom: 20px;
 }
 
+/* 反馈提示样式 */
+.feedback-notice {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    color: #2d3436;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(253, 203, 110, 0.3);
+    border-left: 4px solid #f39c12;
+}
+
 /* 功能选项卡 */
 .function-tabs {
     display: flex;
@@ -776,6 +790,14 @@ h1 {
     
     .container {
         padding: 10px;
+    }
+    
+    /* 反馈提示移动端优化 */
+    .feedback-notice {
+        margin: 10px;
+        padding: 8px 15px;
+        font-size: 13px;
+        border-radius: 6px;
     }
     
     /* 头部优化 */

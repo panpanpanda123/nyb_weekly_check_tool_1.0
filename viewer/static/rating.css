@@ -74,6 +74,20 @@ body {
     transform: translateY(-1px);
 }
 
+/* ==================== 反馈提示 ==================== */
+.feedback-notice {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    color: #2d3436;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 1rem;
+    box-shadow: 0 2px 8px rgba(253, 203, 110, 0.3);
+    border-left: 4px solid #f39c12;
+}
+
 /* ==================== 评价标准横幅 ==================== */
 .criteria-banner {
     background: white;
@@ -641,6 +655,14 @@ body {
     .header-export-btn {
         padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
+    }
+    
+    /* 反馈提示移动端优化 */
+    .feedback-notice {
+        margin: 0.75rem;
+        padding: 8px 15px;
+        font-size: 13px;
+        border-radius: 6px;
     }
     
     .criteria-banner {

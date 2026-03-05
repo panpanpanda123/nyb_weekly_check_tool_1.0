@@ -6,12 +6,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>设备异常监控</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260304-3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260304-4">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🔧 设备异常监控</h1>
+            
+            <!-- 反馈提示 -->
+            <div class="feedback-notice">
+                💬 有使用问题或BUG,企微找窦(dou)反馈下
+            </div>
             
             <!-- 功能选项卡 -->
             <div class="function-tabs">
@@ -75,6 +80,6 @@
     <!-- Toast 提示 -->
     <div id="toast" class="toast"></div>
     
-    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260304-3"></script>
+    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260304-4"></script>
 </body>
 </html>
