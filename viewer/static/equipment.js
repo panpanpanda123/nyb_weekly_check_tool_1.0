@@ -323,7 +323,7 @@ function renderProcessingSection(store, equipmentType, processing) {
     return `
         <div class="processing-actions" data-equipment-type="${equipmentType}">
             <button class="action-btn btn-processed" data-action="已恢复">✓ 已恢复</button>
-            <button class="action-btn btn-special">⚠ 未恢复</button>
+            <button class="action-btn btn-special">⚠ 未恢复原因</button>
         </div>
         <div class="reason-input-container" data-equipment-type="${equipmentType}" style="display:none;">
             <input type="text" class="reason-input" placeholder="请输入未恢复原因..." />
