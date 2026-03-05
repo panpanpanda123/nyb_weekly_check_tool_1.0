@@ -48,6 +48,38 @@ h1 {
     border-left: 4px solid #f39c12;
 }
 
+/* 操作提示样式 */
+.operation-tips {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 4px solid #2196f3;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.operation-tips .tips-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1976d2;
+    margin-bottom: 10px;
+}
+
+.operation-tips .tips-content {
+    font-size: 14px;
+    color: #424242;
+    line-height: 1.6;
+}
+
+.operation-tips .tips-content p {
+    margin: 8px 0;
+}
+
+.operation-tips .tips-content strong {
+    color: #1565c0;
+    font-weight: 600;
+}
+
 /* 功能选项卡 */
 .function-tabs {
     display: flex;
@@ -1514,6 +1546,9 @@ h1 {
     border-radius: 6px;
     margin-bottom: 8px;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .processing-status.status-processed {
@@ -1540,6 +1575,26 @@ h1 {
     color: #666;
     font-size: 13px;
     margin-left: 4px;
+}
+
+.edit-processing-btn {
+    padding: 4px 12px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-left: 10px;
+}
+
+.edit-processing-btn:hover {
+    background: #5a6268;
+}
+
+.edit-processing-btn:active {
+    transform: scale(0.95);
 }
 
 .processing-time {
@@ -1773,6 +1828,8 @@ h1 {
     /* 处理状态移动端优化 */
     .processing-status {
         padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
     }
     
     .status-label {
@@ -1788,9 +1845,36 @@ h1 {
         margin-top: 4px;
     }
     
+    .edit-processing-btn {
+        margin-left: 0;
+        margin-top: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
     .processing-time {
         font-size: 11px;
         margin-top: 6px;
+    }
+    
+    /* 操作提示移动端优化 */
+    .operation-tips {
+        margin: 10px;
+        padding: 12px 15px;
+    }
+    
+    .operation-tips .tips-title {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    .operation-tips .tips-content {
+        font-size: 13px;
+    }
+    
+    .operation-tips .tips-content p {
+        margin: 6px 0;
     }
     
     /* 门店操作按钮移动端优化 */

@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>设备异常监控</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260305-1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260305-2">
 </head>
 <body>
     <div class="container">
@@ -16,6 +16,16 @@
             <!-- 反馈提示 -->
             <div class="feedback-notice">
                 💬 有使用问题或BUG,企微找窦(dou)反馈下
+            </div>
+            
+            <!-- 操作提示 -->
+            <div class="operation-tips">
+                <div class="tips-title">📋 操作提示</div>
+                <div class="tips-content">
+                    <p><strong>处理步骤：</strong>请沟通门店重启机顶盒、打开平板确保收银系统在最前展示。</p>
+                    <p><strong>注意：</strong>机顶盒画面正确也有可能存在掉线情况，让门店重启机顶盒，并且每天打烊要关闭机顶盒，长期不重启容易出问题。</p>
+                    <p><strong>小提示：</strong>收银系统状态可以通过牛约堡小程序搜索对应城市对应门店，如果状态为离线，即为收银系统不在线（状态刷新可能会滞后几分钟）。</p>
+                </div>
             </div>
             
             <!-- 功能选项卡 -->
@@ -80,6 +90,6 @@
     <!-- Toast 提示 -->
     <div id="toast" class="toast"></div>
     
-    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260304-4"></script>
+    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260305-2"></script>
 </body>
 </html>

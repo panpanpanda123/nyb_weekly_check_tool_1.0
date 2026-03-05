@@ -315,8 +315,18 @@ function renderProcessingSection(store, equipmentType, processing) {
             <div class="processing-status ${badgeClass}">
                 <span class="status-label">${p.action}</span>
                 ${p.reason ? `<span class="status-reason">: ${p.reason}</span>` : ''}
+                <button class="edit-processing-btn" data-equipment-type="${equipmentType}">✏️ 修改</button>
             </div>
             <div class="processing-time">处理时间: ${p.processed_at}</div>
+            <div class="processing-actions" data-equipment-type="${equipmentType}" style="display:none;">
+                <button class="action-btn btn-processed" data-action="已恢复">✓ 已恢复</button>
+                <button class="action-btn btn-special">⚠ 未恢复原因</button>
+            </div>
+            <div class="reason-input-container" data-equipment-type="${equipmentType}" style="display:none;">
+                <input type="text" class="reason-input" placeholder="请输入未恢复原因..." value="${p.reason || ''}" />
+                <button class="reason-submit-btn">提交</button>
+                <button class="reason-cancel-btn">取消</button>
+            </div>
         `;
     }
     
@@ -335,6 +345,20 @@ function renderProcessingSection(store, equipmentType, processing) {
 
 // 绑定处理按钮事件
 function bindProcessingEvents() {
+    // 修改按钮（已处理状态下显示）
+    document.querySelectorAll('.edit-processing-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const equipmentType = this.dataset.equipmentType;
+            const card = this.closest('.store-card');
+            const equipmentGroup = this.closest('.equipment-group');
+            const statusDiv = equipmentGroup.querySelector('.processing-status');
+            const actionsDiv = equipmentGroup.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
+            
+            statusDiv.style.display = 'none';
+            actionsDiv.style.display = 'flex';
+        });
+    });
+    
     // 已恢复按钮
     document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
         btn.addEventListener('click', async function() {
@@ -348,13 +372,13 @@ function bindProcessingEvents() {
         });
     });
     
-    // 未恢复按钮
+    // 未恢复原因按钮
     document.querySelectorAll('.btn-special').forEach(btn => {
         btn.addEventListener('click', function() {
             const actionsDiv = this.closest('.processing-actions');
             const equipmentType = actionsDiv.dataset.equipmentType;
-            const card = this.closest('.store-card');
-            const reasonContainer = card.querySelector(`.reason-input-container[data-equipment-type="${equipmentType}"]`);
+            const equipmentGroup = this.closest('.equipment-group');
+            const reasonContainer = equipmentGroup.querySelector(`.reason-input-container[data-equipment-type="${equipmentType}"]`);
             
             actionsDiv.style.display = 'none';
             reasonContainer.style.display = 'flex';
@@ -386,12 +410,20 @@ function bindProcessingEvents() {
         btn.addEventListener('click', function() {
             const reasonContainer = this.closest('.reason-input-container');
             const equipmentType = reasonContainer.dataset.equipmentType;
-            const card = this.closest('.store-card');
-            const actionsDiv = card.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
+            const equipmentGroup = this.closest('.equipment-group');
+            const actionsDiv = equipmentGroup.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
+            const statusDiv = equipmentGroup.querySelector('.processing-status');
             
             reasonContainer.style.display = 'none';
-            actionsDiv.style.display = 'flex';
-            reasonContainer.querySelector('.reason-input').value = '';
+            
+            // 如果有已处理状态，显示状态；否则显示操作按钮
+            if (statusDiv) {
+                statusDiv.style.display = 'flex';
+            } else {
+                actionsDiv.style.display = 'flex';
+            }
+            
+            // 不清空输入框，保留原有内容
         });
     });
 }
