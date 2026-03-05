@@ -248,44 +248,66 @@ function renderEquipmentList(stores) {
         return;
     }
     
-    container.innerHTML = stores.map(store => `
-        <div class="store-card" data-store-id="${store.store_id}">
-            <div class="store-header">
-                <div class="store-info">
-                    <span class="store-name">${store.store_name}</span>
-                    <span class="store-id">ID: ${store.store_id}</span>
+    container.innerHTML = stores.map(store => {
+        // 按设备类型分组
+        const posEquipment = store.equipment.filter(eq => eq.equipment_type === 'POS');
+        const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
+        
+        return `
+            <div class="store-card" data-store-id="${store.store_id}">
+                <div class="store-header">
+                    <div class="store-info">
+                        <span class="store-name">${store.store_name}</span>
+                        <span class="store-id">ID: ${store.store_id}</span>
+                    </div>
+                    <div class="store-meta">
+                        <span class="badge badge-war-zone">${store.war_zone}</span>
+                        <span class="badge badge-manager">${store.regional_manager}</span>
+                        <span class="badge badge-count">${store.equipment.length}个设备异常</span>
+                    </div>
                 </div>
-                <div class="store-meta">
-                    <span class="badge badge-war-zone">${store.war_zone}</span>
-                    <span class="badge badge-manager">${store.regional_manager}</span>
-                    <span class="badge badge-count">${store.equipment.length}个设备异常</span>
-                </div>
-            </div>
-            <div class="store-body">
-                <div class="equipment-list-items">
-                    ${store.equipment.map(eq => `
-                        <div class="equipment-item-inline">
-                            <span class="equipment-type-badge ${eq.equipment_type === 'POS' ? 'type-pos' : 'type-stb'}">${eq.equipment_type}</span>
-                            <span class="equipment-status-badge">离线</span>
-                            <span class="equipment-name-text">${eq.equipment_name || eq.equipment_id}</span>
+                <div class="store-body">
+                    ${posEquipment.length > 0 ? `
+                        <div class="equipment-group">
+                            <div class="equipment-group-title">收银系统 (POS)</div>
+                            <div class="equipment-list-items">
+                                ${posEquipment.map(eq => `
+                                    <div class="equipment-item-inline">
+                                        <span class="equipment-status-badge">离线</span>
+                                        <span class="equipment-name-text">${eq.equipment_name || eq.equipment_id}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${renderProcessingSection(store, 'POS', store.processing_pos)}
                         </div>
-                    `).join('')}
+                    ` : ''}
+                    ${stbEquipment.length > 0 ? `
+                        <div class="equipment-group">
+                            <div class="equipment-group-title">机顶盒</div>
+                            <div class="equipment-list-items">
+                                ${stbEquipment.map(eq => `
+                                    <div class="equipment-item-inline">
+                                        <span class="equipment-status-badge">离线</span>
+                                        <span class="equipment-name-text">${eq.equipment_name || eq.equipment_id}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${renderProcessingSection(store, '机顶盒', store.processing_stb)}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
-            <div class="store-footer">
-                ${renderProcessingSection(store)}
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     // 绑定处理按钮事件
     bindProcessingEvents();
 }
 
 // 渲染处理区域
-function renderProcessingSection(store) {
-    if (store.processing) {
-        const p = store.processing;
+function renderProcessingSection(store, equipmentType, processing) {
+    if (processing) {
+        const p = processing;
         let badgeClass = 'status-processed';
         if (p.action === '未恢复') badgeClass = 'status-special';
         
@@ -299,11 +321,11 @@ function renderProcessingSection(store) {
     }
     
     return `
-        <div class="processing-actions">
+        <div class="processing-actions" data-equipment-type="${equipmentType}">
             <button class="action-btn btn-processed" data-action="已恢复">✓ 已恢复</button>
             <button class="action-btn btn-special">⚠ 未恢复</button>
         </div>
-        <div class="reason-input-container" style="display:none;">
+        <div class="reason-input-container" data-equipment-type="${equipmentType}" style="display:none;">
             <input type="text" class="reason-input" placeholder="请输入未恢复原因..." />
             <button class="reason-submit-btn">提交</button>
             <button class="reason-cancel-btn">取消</button>
@@ -313,23 +335,26 @@ function renderProcessingSection(store) {
 
 // 绑定处理按钮事件
 function bindProcessingEvents() {
-    // 已处理和不配合按钮
+    // 已恢复按钮
     document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
         btn.addEventListener('click', async function() {
             const card = this.closest('.store-card');
             const storeId = card.dataset.storeId;
             const action = this.dataset.action;
+            const actionsDiv = this.closest('.processing-actions');
+            const equipmentType = actionsDiv.dataset.equipmentType;
             
-            await processEquipment(storeId, action, '');
+            await processEquipment(storeId, equipmentType, action, '');
         });
     });
     
     // 未恢复按钮
     document.querySelectorAll('.btn-special').forEach(btn => {
         btn.addEventListener('click', function() {
+            const actionsDiv = this.closest('.processing-actions');
+            const equipmentType = actionsDiv.dataset.equipmentType;
             const card = this.closest('.store-card');
-            const actionsDiv = card.querySelector('.processing-actions');
-            const reasonContainer = card.querySelector('.reason-input-container');
+            const reasonContainer = card.querySelector(`.reason-input-container[data-equipment-type="${equipmentType}"]`);
             
             actionsDiv.style.display = 'none';
             reasonContainer.style.display = 'flex';
@@ -340,8 +365,9 @@ function bindProcessingEvents() {
     // 提交理由按钮
     document.querySelectorAll('.reason-submit-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
-            const card = this.closest('.store-card');
-            const reasonInput = card.querySelector('.reason-input');
+            const reasonContainer = this.closest('.reason-input-container');
+            const equipmentType = reasonContainer.dataset.equipmentType;
+            const reasonInput = reasonContainer.querySelector('.reason-input');
             const reason = reasonInput.value.trim();
             
             if (!reason) {
@@ -349,17 +375,19 @@ function bindProcessingEvents() {
                 return;
             }
             
+            const card = this.closest('.store-card');
             const storeId = card.dataset.storeId;
-            await processEquipment(storeId, '未恢复', reason);
+            await processEquipment(storeId, equipmentType, '未恢复', reason);
         });
     });
     
     // 取消按钮
     document.querySelectorAll('.reason-cancel-btn').forEach(btn => {
         btn.addEventListener('click', function() {
+            const reasonContainer = this.closest('.reason-input-container');
+            const equipmentType = reasonContainer.dataset.equipmentType;
             const card = this.closest('.store-card');
-            const actionsDiv = card.querySelector('.processing-actions');
-            const reasonContainer = card.querySelector('.reason-input-container');
+            const actionsDiv = card.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
             
             reasonContainer.style.display = 'none';
             actionsDiv.style.display = 'flex';
@@ -369,7 +397,7 @@ function bindProcessingEvents() {
 }
 
 // 处理设备异常
-async function processEquipment(storeId, action, reason) {
+async function processEquipment(storeId, equipmentType, action, reason) {
     try {
         const response = await fetch(`${API_BASE_PATH}/api/equipment/process`, {
             method: 'POST',
@@ -378,6 +406,7 @@ async function processEquipment(storeId, action, reason) {
             },
             body: JSON.stringify({
                 store_id: storeId,
+                equipment_type: equipmentType,
                 action: action,
                 reason: reason
             })

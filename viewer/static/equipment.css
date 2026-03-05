@@ -273,3 +273,47 @@
     background: white;
     border-radius: 8px;
 }
+
+/* 设备分组样式 */
+.equipment-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.equipment-group:last-child {
+    margin-bottom: 0;
+}
+
+.equipment-group-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.equipment-group .equipment-list-items {
+    margin-bottom: 12px;
+}
+
+.equipment-group .processing-actions,
+.equipment-group .reason-input-container {
+    margin-top: 10px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+    .equipment-group {
+        padding: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .equipment-group-title {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+}

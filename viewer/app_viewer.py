@@ -1059,11 +1059,14 @@ def search_equipment():
             .order_by(EquipmentStatus.store_id, EquipmentStatus.id)\
             .all()
         
-        # 获取处理记录
+        # 获取处理记录（按门店ID和设备类型分组）
         processing_records = session.query(EquipmentProcessing)\
             .filter(EquipmentProcessing.store_id.in_(store_ids))\
             .all()
-        processing_dict = {p.store_id: p.to_dict() for p in processing_records}
+        processing_dict = {}
+        for p in processing_records:
+            key = f"{p.store_id}_{p.equipment_type}"
+            processing_dict[key] = p.to_dict()
         
         # 按门店分组
         stores_data = {}
@@ -1075,7 +1078,8 @@ def search_equipment():
                     'war_zone': equipment.war_zone,
                     'regional_manager': equipment.regional_manager,
                     'equipment': [],
-                    'processing': processing_dict.get(equipment.store_id)
+                    'processing_pos': processing_dict.get(f"{equipment.store_id}_POS"),
+                    'processing_stb': processing_dict.get(f"{equipment.store_id}_机顶盒")
                 }
             stores_data[equipment.store_id]['equipment'].append(equipment.to_dict())
         
@@ -1110,18 +1114,20 @@ def process_equipment():
         
         data = request.get_json()
         store_id = data.get('store_id')
-        action = data.get('action')  # 已处理/不配合/特殊情况
+        equipment_type = data.get('equipment_type')  # POS/机顶盒
+        action = data.get('action')  # 已恢复/未恢复
         reason = data.get('reason', '')
         
-        if not store_id or not action:
+        if not store_id or not equipment_type or not action:
             return jsonify({
                 'success': False,
                 'error': '缺少必要参数'
             }), 400
         
-        # 检查是否已存在处理记录
+        # 检查是否已存在处理记录（按门店ID和设备类型）
         existing = session.query(EquipmentProcessing)\
             .filter(EquipmentProcessing.store_id == store_id)\
+            .filter(EquipmentProcessing.equipment_type == equipment_type)\
             .first()
         
         if existing:
@@ -1133,6 +1139,7 @@ def process_equipment():
             # 创建新记录
             processing = EquipmentProcessing(
                 store_id=store_id,
+                equipment_type=equipment_type,
                 action=action,
                 reason=reason
             )
@@ -1168,13 +1175,17 @@ def export_equipment():
         equipment_list = session.query(EquipmentStatus).all()
         processing_list = session.query(EquipmentProcessing).all()
         
-        # 创建处理记录字典
-        processing_dict = {p.store_id: p for p in processing_list}
+        # 创建处理记录字典（按门店ID和设备类型）
+        processing_dict = {}
+        for p in processing_list:
+            key = f"{p.store_id}_{p.equipment_type}"
+            processing_dict[key] = p
         
         # 准备导出数据
         export_data = []
         for equipment in equipment_list:
-            processing = processing_dict.get(equipment.store_id)
+            key = f"{equipment.store_id}_{equipment.equipment_type}"
+            processing = processing_dict.get(key)
             export_data.append({
                 '门店ID': equipment.store_id,
                 '门店名称': equipment.store_name,
@@ -1185,7 +1196,7 @@ def export_equipment():
                 '设备名称': equipment.equipment_name,
                 '设备状态': equipment.status,
                 '处理动作': processing.action if processing else '',
-                '特殊情况理由': processing.reason if processing else '',
+                '未恢复原因': processing.reason if processing else '',
                 '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else ''
             })
         
