@@ -36,7 +36,7 @@ equipment_dir = project_root / 'equipment_status'
 # 查找最新的文件
 pos_files = list(equipment_dir.glob('牛约堡集团_点餐设备表*.xlsx'))
 stb_files = list(equipment_dir.glob('202*.xlsx'))
-store_files = list(equipment_dir.glob('牛约堡集团_门店档案*.xlsx'))
+operating_store_files = list(equipment_dir.glob('*在营门店*.xlsx'))
 
 if not pos_files:
     print("❌ 未找到收银设备文件")
@@ -44,18 +44,18 @@ if not pos_files:
 if not stb_files:
     print("❌ 未找到机顶盒文件")
     sys.exit(1)
-if not store_files:
-    print("❌ 未找到门店档案文件")
+if not operating_store_files:
+    print("❌ 未找到在营门店文件")
     sys.exit(1)
 
 # 使用最新的文件
 pos_file = max(pos_files, key=lambda p: p.stat().st_mtime)
 stb_file = max(stb_files, key=lambda p: p.stat().st_mtime)
-store_file = max(store_files, key=lambda p: p.stat().st_mtime)
+operating_store_file = max(operating_store_files, key=lambda p: p.stat().st_mtime)
 
 print(f"✅ 找到收银设备文件: {pos_file.name}")
 print(f"✅ 找到机顶盒文件: {stb_file.name}")
-print(f"✅ 找到门店档案文件: {store_file.name}")
+print(f"✅ 找到在营门店文件: {operating_store_file.name}")
 print()
 
 # 2. 连接数据库
@@ -81,14 +81,27 @@ except Exception as e:
 
 print()
 
-# 3. 读取暂停营业门店列表
-print("📖 读取暂停营业门店列表...")
+# 3. 读取在营门店列表
+print("📖 读取在营门店列表...")
 try:
-    df_closed = pd.read_excel(store_file, header=2)
-    closed_stores = set(str(sid) for sid in df_closed['机构编码'].dropna())
-    print(f"✅ 找到 {len(closed_stores)} 家暂停营业门店")
+    # 读取"营业门店" sheet
+    df_operating = pd.read_excel(operating_store_file, sheet_name='营业门店')
+    
+    # C列是门店ID，I列是营业状态
+    # 只保留营业状态为"营业中"的门店
+    operating_stores = set()
+    for _, row in df_operating.iterrows():
+        store_id = str(row.iloc[2]).strip()  # C列（索引2）
+        status = str(row.iloc[8]).strip()     # I列（索引8）
+        
+        if status == '营业中':
+            operating_stores.add(store_id)
+    
+    print(f"✅ 找到 {len(operating_stores)} 家营业中门店")
 except Exception as e:
-    print(f"❌ 读取门店档案失败: {e}")
+    print(f"❌ 读取在营门店文件失败: {e}")
+    import traceback
+    traceback.print_exc()
     session.close()
     sys.exit(1)
 
@@ -131,15 +144,15 @@ try:
     print(f"   找到 {len(df_offline_pos)} 台离线收银设备")
     
     pos_count = 0
-    pos_skip_closed = 0
+    pos_skip_not_operating = 0
     pos_skip_no_whitelist = 0
     
     for _, row in df_offline_pos.iterrows():
         store_id = str(row['设备编号'])
         
-        # 跳过暂停营业门店
-        if store_id in closed_stores:
-            pos_skip_closed += 1
+        # 只保留在营门店列表中的门店
+        if store_id not in operating_stores:
+            pos_skip_not_operating += 1
             continue
         
         # 跳过不在whitelist中的门店
@@ -164,7 +177,7 @@ try:
         pos_count += 1
     
     print(f"   导入 {pos_count} 条记录")
-    print(f"   跳过暂停营业: {pos_skip_closed}")
+    print(f"   跳过非营业中: {pos_skip_not_operating}")
     print(f"   跳过不在whitelist: {pos_skip_no_whitelist}")
     
 except Exception as e:
@@ -187,15 +200,15 @@ try:
     print(f"   找到 {len(df_offline_stb)} 台离线机顶盒")
     
     stb_count = 0
-    stb_skip_closed = 0
+    stb_skip_not_operating = 0
     stb_skip_no_whitelist = 0
     
     for _, row in df_offline_stb.iterrows():
         store_id = str(row['设备编码'])
         
-        # 跳过暂停营业门店
-        if store_id in closed_stores:
-            stb_skip_closed += 1
+        # 只保留在营门店列表中的门店
+        if store_id not in operating_stores:
+            stb_skip_not_operating += 1
             continue
         
         # 跳过不在whitelist中的门店
@@ -220,7 +233,7 @@ try:
         stb_count += 1
     
     print(f"   导入 {stb_count} 条记录")
-    print(f"   跳过暂停营业: {stb_skip_closed}")
+    print(f"   跳过非营业中: {stb_skip_not_operating}")
     print(f"   跳过不在whitelist: {stb_skip_no_whitelist}")
     
 except Exception as e:
