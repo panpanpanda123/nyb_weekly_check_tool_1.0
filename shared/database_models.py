@@ -275,11 +275,6 @@ class EquipmentStatus(Base):
         }
 
 
-class EquipmentProcessing(Base):
-    """设备异常处理记录模型"""
-    __tablename__ = 'equipment_processing'
-
-
 class EquipmentImportLog(Base):
     """设备数据导入日志"""
     __tablename__ = 'equipment_import_log'
@@ -292,6 +287,10 @@ class EquipmentImportLog(Base):
     
     __table_args__ = ({'comment': '设备数据导入日志表'},)
 
+
+class EquipmentProcessing(Base):
+    """设备异常处理记录模型"""
+    __tablename__ = 'equipment_processing'
     
     # 主键
     id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
