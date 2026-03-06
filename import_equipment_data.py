@@ -205,7 +205,7 @@ if import_pos and pos_file:
         pos_skip_no_whitelist = 0
         
         for _, row in df_offline_pos.iterrows():
-            store_id = str(row['设备编号'])
+            store_id = str(row['组织机构代码'])  # 使用组织机构代码匹配门店ID
             
             # 只保留在营门店列表中的门店
             if store_id not in operating_stores:
@@ -225,7 +225,7 @@ if import_pos and pos_file:
                 war_zone=whitelist_info['war_zone'],
                 regional_manager=whitelist_info['regional_manager'],
                 equipment_type='POS',
-                equipment_id=store_id,
+                equipment_id=str(row.get('设备编号', '')),  # 设备编号作为设备ID
                 equipment_name=str(row.get('设备名称', '')),
                 status='离线',
                 import_time=datetime.now()
