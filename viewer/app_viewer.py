@@ -997,6 +997,19 @@ def get_equipment_regional_managers():
             .order_by(EquipmentStatus.regional_manager)\
             .all()
         regional_managers = [rm[0] for rm in regional_managers]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'regional_managers': regional_managers
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取区域经理列表失败: {str(e)}'
+        }), 500
 
 
 @app.route('/api/equipment/all-regional-managers')
