@@ -48,6 +48,11 @@
                 <button id="clearStoreSearchBtn" class="clear-search-btn" style="display:none;">✕ 清除</button>
             </div>
             
+            <!-- 导出按钮 - 右上角 -->
+            <div class="export-container">
+                <button id="exportBtn" class="export-btn-small">📥</button>
+            </div>
+            
             <!-- 筛选区域 -->
             <div class="filter-section">
                 <div class="filter-row">
@@ -72,11 +77,12 @@
                     </div>
                 </div>
                 
-                <div class="filter-actions">
-                    <button id="searchBtn" class="search-btn">🔍 搜索</button>
-                    <button id="clearBtn" class="clear-btn">✕ 清除筛选</button>
-                    <button id="exportBtn" class="export-btn">📥 导出</button>
-                    <span id="resultCount" class="result-count">异常门店: 0</span>
+                <div class="filter-actions-compact">
+                    <div class="action-row">
+                        <button id="searchBtn" class="search-btn-compact">🔍 搜索</button>
+                        <button id="clearBtn" class="clear-btn-compact">✕ 清除</button>
+                    </div>
+                    <span id="resultCount" class="result-count-compact">异常门店: 0</span>
                 </div>
             </div>
         </header>

@@ -10,6 +10,7 @@ let filters = {
     regional_manager: '',
     store_search: ''
 };
+let displayMode = 'card'; // 'card' 或 'list'
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -146,7 +147,6 @@ function setupEventListeners() {
         filters.war_zone = warZone;
         
         const regionalManagerInput = document.getElementById('regionalManagerFilter');
-        const currentValue = regionalManagerInput.value;
         
         // 加载对应的区域经理列表
         await loadRegionalManagers(warZone);
@@ -262,6 +262,9 @@ async function searchEquipment() {
     try {
         showLoading();
         
+        // 判断显示模式：如果没有选择区域经理，使用列表模式
+        displayMode = filters.regional_manager ? 'card' : 'list';
+        
         // 构建查询参数
         const params = new URLSearchParams({
             page: currentPage,
@@ -279,8 +282,12 @@ async function searchEquipment() {
             // 更新统计信息
             document.getElementById('resultCount').textContent = `异常门店: ${data.total_stores}`;
             
-            // 渲染门店列表
-            renderEquipmentList(data.stores);
+            // 根据模式渲染
+            if (displayMode === 'list') {
+                renderEquipmentListMode(data.stores);
+            } else {
+                renderEquipmentList(data.stores);
+            }
             
             // 更新分页
             if (data.total_stores > 0) {
@@ -325,13 +332,13 @@ function renderEquipmentList(stores) {
             <div class="store-card" data-store-id="${store.store_id}">
                 <div class="store-header">
                     <div class="store-info">
-                        <span class="store-name">${store.store_name}</span>
-                        <span class="store-id">ID: ${store.store_id}</span>
+                        <div class="store-name">${store.store_name}</div>
+                        <div class="store-id">ID: ${store.store_id}</div>
                     </div>
                     <div class="store-meta">
                         <span class="badge badge-war-zone">${store.war_zone}</span>
                         <span class="badge badge-manager">${store.regional_manager}</span>
-                        <span class="badge badge-count">${store.equipment.length}个设备异常</span>
+                        <span class="badge badge-count">${store.equipment.length}个异常</span>
                     </div>
                 </div>
                 <div class="store-body">
@@ -370,6 +377,112 @@ function renderEquipmentList(stores) {
     
     // 绑定处理按钮事件
     bindProcessingEvents();
+}
+
+// 渲染列表模式（战区/领导查看）
+function renderEquipmentListMode(stores) {
+    const container = document.getElementById('resultsContainer');
+    
+    if (!stores || stores.length === 0) {
+        container.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-icon">📭</div>
+                <h2>暂无设备异常数据</h2>
+                <p>当前筛选条件下没有找到设备异常</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 统计数据
+    const totalStores = stores.length;
+    const pendingStores = stores.filter(s => !s.processing_pos && !s.processing_stb).length;
+    const completedStores = totalStores - pendingStores;
+    
+    let html = `
+        <div class="list-mode-container">
+            <div class="summary-section">
+                <div class="summary-title">📊 处理进度概览</div>
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">${totalStores}</div>
+                        <div class="stat-label">异常门店总数</div>
+                    </div>
+                    <div class="stat-item pending">
+                        <div class="stat-number">${pendingStores}</div>
+                        <div class="stat-label">待处理门店</div>
+                    </div>
+                    <div class="stat-item completed">
+                        <div class="stat-number">${completedStores}</div>
+                        <div class="stat-label">已处理门店</div>
+                    </div>
+                </div>
+            </div>
+    `;
+    
+    // 渲染门店列表
+    stores.forEach(store => {
+        const posEquipment = store.equipment.filter(eq => eq.equipment_type === 'POS');
+        const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
+        const isPending = !store.processing_pos && !store.processing_stb;
+        
+        html += `
+            <div class="store-list-item">
+                <div class="store-list-header">
+                    <div class="store-list-info">
+                        <div class="store-list-name">${store.store_name}</div>
+                        <div class="store-list-meta">${store.war_zone} · ${store.regional_manager} · ID: ${store.store_id}</div>
+                    </div>
+                    <div class="store-list-status">
+                        <span class="status-badge ${isPending ? 'pending' : 'completed'}">
+                            ${isPending ? '待处理' : '已处理'}
+                        </span>
+                    </div>
+                </div>
+                <div class="store-list-equipment">
+                    ${posEquipment.length > 0 ? `
+                        <div class="equipment-type-section">
+                            <div class="equipment-type-header">
+                                <span class="equipment-type-title">🖥️ 收银系统 (POS)</span>
+                                <span class="equipment-count">${posEquipment.length}台离线</span>
+                            </div>
+                            <div class="equipment-compact-list">
+                                ${posEquipment.map(eq => `
+                                    <span class="equipment-compact-item">${eq.equipment_name || eq.equipment_id}</span>
+                                `).join('')}
+                            </div>
+                            ${store.processing_pos ? `
+                                <div style="margin-top: 6px; font-size: 11px; color: #28a745;">
+                                    ✓ ${store.processing_pos.action}${store.processing_pos.reason ? ': ' + store.processing_pos.reason : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                    ${stbEquipment.length > 0 ? `
+                        <div class="equipment-type-section">
+                            <div class="equipment-type-header">
+                                <span class="equipment-type-title">📺 机顶盒</span>
+                                <span class="equipment-count">${stbEquipment.length}台离线</span>
+                            </div>
+                            <div class="equipment-compact-list">
+                                ${stbEquipment.map(eq => `
+                                    <span class="equipment-compact-item">${eq.equipment_name || eq.equipment_id}</span>
+                                `).join('')}
+                            </div>
+                            ${store.processing_stb ? `
+                                <div style="margin-top: 6px; font-size: 11px; color: #28a745;">
+                                    ✓ ${store.processing_stb.action}${store.processing_stb.reason ? ': ' + store.processing_stb.reason : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    container.innerHTML = html;
 }
 
 // 渲染处理区域

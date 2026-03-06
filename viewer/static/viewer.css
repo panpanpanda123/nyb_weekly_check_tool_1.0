@@ -19,6 +19,94 @@ body {
     padding: 20px;
 }
 
+/* 导出按钮 - 右上角小按钮 */
+.export-container {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+}
+
+.export-btn-small {
+    padding: 8px 12px;
+    background: #95a5a6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.export-btn-small:hover {
+    background: #7f8c8d;
+    transform: translateY(-1px);
+}
+
+.export-btn-small:active {
+    transform: translateY(0);
+}
+
+/* 紧凑型筛选操作区 */
+.filter-actions-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-row {
+    display: flex;
+    gap: 10px;
+}
+
+.search-btn-compact,
+.clear-btn-compact {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.search-btn-compact {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.search-btn-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.search-btn-compact:active {
+    transform: translateY(0);
+}
+
+.clear-btn-compact {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.clear-btn-compact:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+}
+
+.result-count-compact {
+    background-color: #ecf0f1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #34495e;
+    text-align: center;
+}
+
 /* 头部样式 */
 header {
     background-color: #fff;
@@ -26,6 +114,7 @@ header {
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     margin-bottom: 30px;
+    position: relative;
 }
 
 h1 {
@@ -1403,6 +1492,102 @@ h1 {
 
 /* ==================== 设备异常监控样式 ==================== */
 
+/* 门店卡片紧凑布局 */
+.store-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.store-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.store-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.store-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.store-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.store-id {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+.store-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-war-zone {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-manager {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.badge-count {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.store-body {
+    margin-top: 12px;
+}
+
+.equipment-group {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.equipment-group:last-child {
+    margin-bottom: 0;
+}
+
+.equipment-group-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #dee2e6;
+}
+
 .equipment-list-items {
     display: flex;
     flex-wrap: wrap;
@@ -1418,6 +1603,169 @@ h1 {
     background: #f8f9fa;
     border-radius: 4px;
     font-size: 13px;
+}
+
+/* 列表模式样式 - 用于战区/领导查看 */
+.list-mode-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.summary-section {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.summary-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.stat-item {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-item.pending {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-item.completed {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+/* 列表模式门店卡片 */
+.store-list-item {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: all 0.2s;
+}
+
+.store-list-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+
+.store-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.store-list-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.store-list-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 2px;
+}
+
+.store-list-meta {
+    font-size: 11px;
+    color: #7f8c8d;
+}
+
+.store-list-status {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.store-list-equipment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.equipment-type-section {
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.equipment-type-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.equipment-type-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.equipment-count {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.equipment-compact-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.equipment-compact-item {
+    padding: 3px 6px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #495057;
 }
 
 .equipment-type-badge {
@@ -1700,6 +2048,124 @@ h1 {
 /* ==================== 移动端设备异常优化 ==================== */
 
 @media (max-width: 768px) {
+    
+    /* 导出按钮移动端 */
+    .export-container {
+        top: 10px;
+        right: 10px;
+    }
+    
+    .export-btn-small {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    
+    /* 紧凑型操作按钮 */
+    .filter-actions-compact {
+        gap: 8px;
+    }
+    
+    .action-row {
+        gap: 8px;
+    }
+    
+    .search-btn-compact,
+    .clear-btn-compact {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+    
+    .result-count-compact {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    /* 门店卡片移动端优化 */
+    .store-card {
+        padding: 12px;
+        border-radius: 8px;
+    }
+    
+    .store-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .store-meta {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .store-name {
+        font-size: 15px;
+    }
+    
+    .store-id {
+        font-size: 11px;
+    }
+    
+    .badge {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .equipment-group {
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+    
+    .equipment-group-title {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+    
+    /* 列表模式移动端优化 */
+    .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .stat-item {
+        padding: 10px;
+    }
+    
+    .stat-number {
+        font-size: 20px;
+    }
+    
+    .stat-label {
+        font-size: 11px;
+    }
+    
+    .store-list-item {
+        padding: 10px;
+    }
+    
+    .store-list-name {
+        font-size: 14px;
+    }
+    
+    .store-list-meta {
+        font-size: 10px;
+    }
+    
+    .equipment-type-section {
+        padding: 6px;
+    }
+    
+    .equipment-type-title {
+        font-size: 12px;
+    }
+    
+    .equipment-count {
+        font-size: 10px;
+    }
+    
+    .equipment-compact-item {
+        font-size: 10px;
+        padding: 2px 5px;
+    }
     /* 功能选项卡移动端优化 */
     .function-tabs {
         gap: 6px;
