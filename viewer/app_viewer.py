@@ -67,6 +67,26 @@ def get_db_session() -> Session:
     return SessionFactory()
 
 
+@app.after_request
+def add_no_cache_headers(response):
+    """
+    为所有响应添加禁用缓存的响应头
+    解决企微小程序缓存问题
+    """
+    # 完全禁用缓存
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    # 防止代理服务器缓存
+    response.headers['Last-Modified'] = datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    
+    # 移除 ETag（如果存在）
+    response.headers.pop('ETag', None)
+    
+    return response
+
+
 @app.route('/')
 def index():
     """展示系统首页"""

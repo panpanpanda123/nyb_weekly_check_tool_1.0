@@ -5,8 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- 禁用缓存 - 解决企微小程序缓存问题 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>设备异常监控</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v=20260305-2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v={{ range(1, 999999) | random }}">
 </head>
 <body>
     <div class="container">
@@ -107,6 +113,6 @@
     <!-- Toast 提示 -->
     <div id="toast" class="toast"></div>
     
-    <script src="{{ url_for('static', filename='equipment.js') }}?v=20260305-2"></script>
+    <script src="{{ url_for('static', filename='equipment.js') }}?v={{ range(1, 999999) | random }}"></script>
 </body>
 </html>
