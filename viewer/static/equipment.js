@@ -284,7 +284,7 @@ async function searchEquipment() {
             
             // 根据模式渲染
             if (displayMode === 'list') {
-                renderEquipmentListMode(data.stores);
+                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed);
             } else {
                 renderEquipmentList(data.stores);
             }
@@ -329,47 +329,41 @@ function renderEquipmentList(stores) {
         const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
         
         return `
-            <div class="store-card" data-store-id="${store.store_id}">
-                <div class="store-header">
-                    <div class="store-info">
-                        <div class="store-name">${store.store_name}</div>
-                        <div class="store-id">ID: ${store.store_id}</div>
-                    </div>
-                    <div class="store-meta">
-                        <span class="badge badge-war-zone">${store.war_zone}</span>
-                        <span class="badge badge-manager">${store.regional_manager}</span>
-                        <span class="badge badge-count">${store.equipment.length}个异常</span>
+            <div class="store-card-horizontal" data-store-id="${store.store_id}">
+                <!-- 左侧：门店信息 -->
+                <div class="store-info-section">
+                    <div class="store-name-compact">${store.store_name}</div>
+                    <div class="store-meta-inline">
+                        <span class="meta-item">${store.war_zone}</span>
+                        <span class="meta-item">${store.regional_manager}</span>
+                        <span class="meta-badge">${store.equipment.length}个异常</span>
                     </div>
                 </div>
-                <div class="store-body">
+                
+                <!-- 中间：设备信息 -->
+                <div class="equipment-info-section">
                     ${posEquipment.length > 0 ? `
-                        <div class="equipment-group">
-                            <div class="equipment-group-title">收银系统 (POS)</div>
-                            <div class="equipment-list-items">
-                                ${posEquipment.map(eq => `
-                                    <div class="equipment-item-inline">
-                                        <span class="equipment-status-badge">离线</span>
-                                        <span class="equipment-name-text">${eq.equipment_name || eq.equipment_id}</span>
-                                    </div>
-                                `).join('')}
+                        <div class="equipment-row">
+                            <span class="equipment-type-label">🖥️ POS:</span>
+                            <div class="equipment-items-inline">
+                                ${posEquipment.map(eq => `<span class="equipment-chip">${eq.equipment_name || eq.equipment_id}</span>`).join('')}
                             </div>
-                            ${renderProcessingSection(store, 'POS', store.processing_pos)}
                         </div>
                     ` : ''}
                     ${stbEquipment.length > 0 ? `
-                        <div class="equipment-group">
-                            <div class="equipment-group-title">机顶盒</div>
-                            <div class="equipment-list-items">
-                                ${stbEquipment.map(eq => `
-                                    <div class="equipment-item-inline">
-                                        <span class="equipment-status-badge">离线</span>
-                                        <span class="equipment-name-text">${eq.equipment_name || eq.equipment_id}</span>
-                                    </div>
-                                `).join('')}
+                        <div class="equipment-row">
+                            <span class="equipment-type-label">📺 机顶盒:</span>
+                            <div class="equipment-items-inline">
+                                ${stbEquipment.map(eq => `<span class="equipment-chip">${eq.equipment_name || eq.equipment_id}</span>`).join('')}
                             </div>
-                            ${renderProcessingSection(store, '机顶盒', store.processing_stb)}
                         </div>
                     ` : ''}
+                </div>
+                
+                <!-- 右侧：操作按钮 -->
+                <div class="actions-section">
+                    ${posEquipment.length > 0 ? renderCompactActions(store, 'POS', store.processing_pos) : ''}
+                    ${stbEquipment.length > 0 ? renderCompactActions(store, '机顶盒', store.processing_stb) : ''}
                 </div>
             </div>
         `;
@@ -379,8 +373,46 @@ function renderEquipmentList(stores) {
     bindProcessingEvents();
 }
 
+// 渲染紧凑型操作按钮
+function renderCompactActions(store, equipmentType, processing) {
+    if (processing) {
+        const badgeClass = processing.action === '未恢复' ? 'status-warning' : 'status-success';
+        return `
+            <div class="action-group" data-equipment-type="${equipmentType}">
+                <div class="status-compact ${badgeClass}">
+                    ${processing.action === '已恢复' ? '✓' : '⚠'} ${processing.action}${processing.reason ? ': ' + processing.reason : ''}
+                </div>
+                <button class="btn-edit-compact" data-equipment-type="${equipmentType}">✏️</button>
+            </div>
+            <div class="action-buttons-compact" data-equipment-type="${equipmentType}" style="display:none;">
+                <button class="btn-action-compact btn-success" data-action="已恢复">✓</button>
+                <button class="btn-action-compact btn-warning">⚠</button>
+            </div>
+            <div class="reason-input-compact" data-equipment-type="${equipmentType}" style="display:none;">
+                <input type="text" class="input-reason-compact" placeholder="原因..." value="${processing.reason || ''}" />
+                <button class="btn-submit-compact">✓</button>
+                <button class="btn-cancel-compact">✕</button>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="action-group" data-equipment-type="${equipmentType}">
+            <div class="action-buttons-compact" data-equipment-type="${equipmentType}">
+                <button class="btn-action-compact btn-success" data-action="已恢复">✓ 已恢复</button>
+                <button class="btn-action-compact btn-warning">⚠ 未恢复</button>
+            </div>
+            <div class="reason-input-compact" data-equipment-type="${equipmentType}" style="display:none;">
+                <input type="text" class="input-reason-compact" placeholder="原因..." />
+                <button class="btn-submit-compact">✓</button>
+                <button class="btn-cancel-compact">✕</button>
+            </div>
+        </div>
+    `;
+}
+
 // 渲染列表模式（战区/领导查看）
-function renderEquipmentListMode(stores) {
+function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed) {
     const container = document.getElementById('resultsContainer');
     
     if (!stores || stores.length === 0) {
@@ -394,10 +426,10 @@ function renderEquipmentListMode(stores) {
         return;
     }
     
-    // 统计数据
-    const totalStores = stores.length;
-    const pendingStores = stores.filter(s => !s.processing_pos && !s.processing_stb).length;
-    const completedStores = totalStores - pendingStores;
+    // 使用后端返回的准确统计数据
+    const totalStores = totalStoresCount || stores.length;
+    const pendingStores = totalPending !== undefined ? totalPending : stores.filter(s => !s.processing_pos && !s.processing_stb).length;
+    const completedStores = totalProcessed !== undefined ? totalProcessed : (totalStores - pendingStores);
     
     let html = `
         <div class="list-mode-container">
@@ -527,26 +559,25 @@ function renderProcessingSection(store, equipmentType, processing) {
 // 绑定处理按钮事件
 function bindProcessingEvents() {
     // 修改按钮（已处理状态下显示）
-    document.querySelectorAll('.edit-processing-btn').forEach(btn => {
+    document.querySelectorAll('.btn-edit-compact').forEach(btn => {
         btn.addEventListener('click', function() {
             const equipmentType = this.dataset.equipmentType;
-            const card = this.closest('.store-card');
-            const equipmentGroup = this.closest('.equipment-group');
-            const statusDiv = equipmentGroup.querySelector('.processing-status');
-            const actionsDiv = equipmentGroup.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
+            const card = this.closest('.store-card-horizontal');
+            const actionGroup = this.closest('.action-group');
+            const actionsDiv = card.querySelector(`.action-buttons-compact[data-equipment-type="${equipmentType}"]`);
             
-            statusDiv.style.display = 'none';
+            actionGroup.style.display = 'none';
             actionsDiv.style.display = 'flex';
         });
     });
     
     // 已恢复按钮
-    document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
+    document.querySelectorAll('.btn-action-compact[data-action]').forEach(btn => {
         btn.addEventListener('click', async function() {
-            const card = this.closest('.store-card');
+            const card = this.closest('.store-card-horizontal');
             const storeId = card.dataset.storeId;
             const action = this.dataset.action;
-            const actionsDiv = this.closest('.processing-actions');
+            const actionsDiv = this.closest('.action-buttons-compact');
             const equipmentType = actionsDiv.dataset.equipmentType;
             
             await processEquipment(storeId, equipmentType, action, '');
@@ -554,25 +585,25 @@ function bindProcessingEvents() {
     });
     
     // 未恢复原因按钮
-    document.querySelectorAll('.btn-special').forEach(btn => {
+    document.querySelectorAll('.btn-action-compact:not([data-action])').forEach(btn => {
         btn.addEventListener('click', function() {
-            const actionsDiv = this.closest('.processing-actions');
+            const actionsDiv = this.closest('.action-buttons-compact');
             const equipmentType = actionsDiv.dataset.equipmentType;
-            const equipmentGroup = this.closest('.equipment-group');
-            const reasonContainer = equipmentGroup.querySelector(`.reason-input-container[data-equipment-type="${equipmentType}"]`);
+            const card = this.closest('.store-card-horizontal');
+            const reasonContainer = card.querySelector(`.reason-input-compact[data-equipment-type="${equipmentType}"]`);
             
             actionsDiv.style.display = 'none';
             reasonContainer.style.display = 'flex';
-            reasonContainer.querySelector('.reason-input').focus();
+            reasonContainer.querySelector('.input-reason-compact').focus();
         });
     });
     
     // 提交理由按钮
-    document.querySelectorAll('.reason-submit-btn').forEach(btn => {
+    document.querySelectorAll('.btn-submit-compact').forEach(btn => {
         btn.addEventListener('click', async function() {
-            const reasonContainer = this.closest('.reason-input-container');
+            const reasonContainer = this.closest('.reason-input-compact');
             const equipmentType = reasonContainer.dataset.equipmentType;
-            const reasonInput = reasonContainer.querySelector('.reason-input');
+            const reasonInput = reasonContainer.querySelector('.input-reason-compact');
             const reason = reasonInput.value.trim();
             
             if (!reason) {
@@ -580,31 +611,29 @@ function bindProcessingEvents() {
                 return;
             }
             
-            const card = this.closest('.store-card');
+            const card = this.closest('.store-card-horizontal');
             const storeId = card.dataset.storeId;
             await processEquipment(storeId, equipmentType, '未恢复', reason);
         });
     });
     
     // 取消按钮
-    document.querySelectorAll('.reason-cancel-btn').forEach(btn => {
+    document.querySelectorAll('.btn-cancel-compact').forEach(btn => {
         btn.addEventListener('click', function() {
-            const reasonContainer = this.closest('.reason-input-container');
+            const reasonContainer = this.closest('.reason-input-compact');
             const equipmentType = reasonContainer.dataset.equipmentType;
-            const equipmentGroup = this.closest('.equipment-group');
-            const actionsDiv = equipmentGroup.querySelector(`.processing-actions[data-equipment-type="${equipmentType}"]`);
-            const statusDiv = equipmentGroup.querySelector('.processing-status');
+            const card = this.closest('.store-card-horizontal');
+            const actionsDiv = card.querySelector(`.action-buttons-compact[data-equipment-type="${equipmentType}"]`);
+            const actionGroup = card.querySelector(`.action-group[data-equipment-type="${equipmentType}"]`);
             
             reasonContainer.style.display = 'none';
             
             // 如果有已处理状态，显示状态；否则显示操作按钮
-            if (statusDiv) {
-                statusDiv.style.display = 'flex';
+            if (actionGroup && actionGroup.querySelector('.status-compact')) {
+                actionGroup.style.display = 'flex';
             } else {
                 actionsDiv.style.display = 'flex';
             }
-            
-            // 不清空输入框，保留原有内容
         });
     });
 }

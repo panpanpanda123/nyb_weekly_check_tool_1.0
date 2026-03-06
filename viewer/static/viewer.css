@@ -2695,3 +2695,449 @@ h1 {
         transform: scale(0.99);
     }
 }
+
+/* ==================== 横向紧凑卡片布局 ==================== */
+
+.store-card-horizontal {
+    background: white;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+}
+
+.store-card-horizontal:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+
+/* 左侧：门店信息 */
+.store-info-section {
+    flex: 0 0 auto;
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.store-name-compact {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.store-meta-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    font-size: 11px;
+    color: #7f8c8d;
+    padding: 2px 6px;
+    background: #ecf0f1;
+    border-radius: 3px;
+}
+
+.meta-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #c62828;
+    padding: 2px 6px;
+    background: #ffebee;
+    border-radius: 3px;
+}
+
+/* 中间：设备信息 */
+.equipment-info-section {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.equipment-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.equipment-type-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.equipment-items-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.equipment-chip {
+    padding: 2px 6px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #495057;
+    white-space: nowrap;
+}
+
+/* 右侧：操作按钮 */
+.actions-section {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+}
+
+.action-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-compact {
+    flex: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-compact.status-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-compact.status-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.btn-edit-compact {
+    padding: 4px 8px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-edit-compact:hover {
+    background: #5a6268;
+}
+
+.btn-edit-compact:active {
+    transform: scale(0.95);
+}
+
+.action-buttons-compact {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-action-compact {
+    flex: 1;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-action-compact.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-action-compact.btn-success:hover {
+    background: #218838;
+}
+
+.btn-action-compact.btn-warning {
+    background: #ffc107;
+    color: #000;
+}
+
+.btn-action-compact.btn-warning:hover {
+    background: #e0a800;
+}
+
+.btn-action-compact:active {
+    transform: scale(0.98);
+}
+
+.reason-input-compact {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.input-reason-compact {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    min-width: 100px;
+}
+
+.input-reason-compact:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.btn-submit-compact,
+.btn-cancel-compact {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-submit-compact {
+    background: #007bff;
+    color: white;
+}
+
+.btn-submit-compact:hover {
+    background: #0056b3;
+}
+
+.btn-cancel-compact {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancel-compact:hover {
+    background: #545b62;
+}
+
+.btn-submit-compact:active,
+.btn-cancel-compact:active {
+    transform: scale(0.98);
+}
+
+/* ==================== 横向紧凑布局移动端优化 ==================== */
+
+@media (max-width: 768px) {
+    .store-card-horizontal {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    .store-info-section {
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .store-name-compact {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+    
+    .store-meta-inline {
+        gap: 8px;
+    }
+    
+    .meta-item,
+    .meta-badge {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+    
+    .equipment-info-section {
+        gap: 8px;
+    }
+    
+    .equipment-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .equipment-type-label {
+        font-size: 13px;
+    }
+    
+    .equipment-items-inline {
+        width: 100%;
+    }
+    
+    .equipment-chip {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    
+    .actions-section {
+        min-width: auto;
+        gap: 8px;
+    }
+    
+    .action-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    
+    .status-compact {
+        padding: 8px 12px;
+        font-size: 13px;
+        text-align: center;
+    }
+    
+    .btn-edit-compact {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .action-buttons-compact {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .btn-action-compact {
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+    
+    .reason-input-compact {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .input-reason-compact {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+    
+    .btn-submit-compact,
+    .btn-cancel-compact {
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .store-card-horizontal {
+        padding: 10px;
+    }
+    
+    .store-name-compact {
+        font-size: 14px;
+    }
+    
+    .meta-item,
+    .meta-badge {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+    
+    .equipment-type-label {
+        font-size: 12px;
+    }
+    
+    .equipment-chip {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .status-compact {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .btn-edit-compact {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .btn-action-compact {
+        font-size: 13px;
+        padding: 8px 12px;
+        min-height: 40px;
+    }
+    
+    .input-reason-compact {
+        font-size: 13px;
+        padding: 8px 10px;
+        min-height: 40px;
+    }
+    
+    .btn-submit-compact,
+    .btn-cancel-compact {
+        font-size: 13px;
+        padding: 8px 12px;
+        min-height: 40px;
+    }
+}
+
+/* 触摸设备横向紧凑布局优化 */
+@media (hover: none) and (pointer: coarse) {
+    .btn-action-compact,
+    .btn-submit-compact,
+    .btn-cancel-compact,
+    .btn-edit-compact {
+        min-height: 44px;
+    }
+    
+    .input-reason-compact {
+        min-height: 44px;
+        font-size: 16px; /* iOS 避免自动缩放 */
+    }
+    
+    /* 移除悬停效果 */
+    .store-card-horizontal:hover {
+        transform: none;
+    }
+    
+    /* 点击反馈 */
+    .store-card-horizontal:active {
+        transform: scale(0.99);
+    }
+    
+    .btn-action-compact:active,
+    .btn-submit-compact:active,
+    .btn-cancel-compact:active,
+    .btn-edit-compact:active {
+        transform: scale(0.96);
+    }
+}

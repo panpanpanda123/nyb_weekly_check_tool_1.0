@@ -1088,6 +1088,23 @@ def search_equipment():
         # 获取总门店数
         total_stores = store_query.count()
         
+        # 计算总体统计数据（待处理和已处理门店数）
+        # 获取所有符合条件的门店ID
+        all_store_ids = [sid[0] for sid in store_query.all()]
+        
+        # 获取所有这些门店的处理记录
+        all_processing_records = session.query(EquipmentProcessing)\
+            .filter(EquipmentProcessing.store_id.in_(all_store_ids))\
+            .all()
+        
+        # 统计已处理的门店（有任何一种设备类型被处理就算已处理）
+        processed_store_ids = set()
+        for p in all_processing_records:
+            processed_store_ids.add(p.store_id)
+        
+        total_processed = len(processed_store_ids)
+        total_pending = total_stores - total_processed
+        
         # 分页获取门店ID
         store_ids = [sid[0] for sid in store_query.limit(per_page).offset((page - 1) * per_page).all()]
         
@@ -1129,6 +1146,8 @@ def search_equipment():
             'data': {
                 'stores': stores_list,
                 'total_stores': total_stores,
+                'total_pending': total_pending,
+                'total_processed': total_processed,
                 'page': page,
                 'per_page': per_page,
                 'total_pages': total_pages,
