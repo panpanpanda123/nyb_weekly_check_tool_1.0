@@ -163,13 +163,13 @@ print()
 if import_pos and pos_file:
     print("📥 处理收银设备数据...")
     try:
-        # 清空旧的POS数据和处理记录
-        print("   清空旧POS数据和处理记录...")
+        # 清空所有旧数据和处理记录（不管什么类型）
+        print("   清空所有旧设备数据和处理记录...")
         from shared.database_models import EquipmentProcessing
-        session.query(EquipmentProcessing).filter(EquipmentProcessing.equipment_type == 'POS').delete()
-        session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == 'POS').delete()
+        session.query(EquipmentProcessing).delete()
+        session.query(EquipmentStatus).delete()
         session.commit()
-        print("   ✅ 已清空旧POS数据和处理记录")
+        print("   ✅ 已清空所有旧数据和处理记录")
         
         df_pos = pd.read_excel(pos_file, header=1)
         
@@ -244,13 +244,13 @@ else:
 if import_stb and stb_file:
     print("📥 处理机顶盒数据...")
     try:
-        # 清空旧的机顶盒数据和处理记录
-        print("   清空旧机顶盒数据和处理记录...")
+        # 清空所有旧数据和处理记录（不管什么类型）
+        print("   清空所有旧设备数据和处理记录...")
         from shared.database_models import EquipmentProcessing
-        session.query(EquipmentProcessing).filter(EquipmentProcessing.equipment_type == '机顶盒').delete()
-        session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == '机顶盒').delete()
+        session.query(EquipmentProcessing).delete()
+        session.query(EquipmentStatus).delete()
         session.commit()
-        print("   ✅ 已清空旧机顶盒数据和处理记录")
+        print("   ✅ 已清空所有旧数据和处理记录")
         
         df_stb = pd.read_excel(stb_file)
         
