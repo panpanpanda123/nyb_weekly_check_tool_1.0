@@ -278,6 +278,20 @@ class EquipmentStatus(Base):
 class EquipmentProcessing(Base):
     """设备异常处理记录模型"""
     __tablename__ = 'equipment_processing'
+
+
+class EquipmentImportLog(Base):
+    """设备数据导入日志"""
+    __tablename__ = 'equipment_import_log'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    import_type = Column(String(50), comment='导入类型：POS/机顶盒/全部')
+    file_name = Column(String(500), comment='文件名')
+    import_time = Column(DateTime, default=datetime.now, comment='导入时间')
+    data_time = Column(String(50), comment='数据时间（从文件名提取）')
+    
+    __table_args__ = ({'comment': '设备数据导入日志表'},)
+
     
     # 主键
     id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')

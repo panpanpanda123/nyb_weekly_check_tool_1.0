@@ -45,6 +45,14 @@ async function loadFilterOptions() {
                 warZoneSelect.innerHTML += `<option value="${wz}">${wz}</option>`;
             });
             
+            // 显示数据更新时间
+            if (data.data_time) {
+                const dataUpdateTimeDiv = document.getElementById('dataUpdateTime');
+                const dataTimeText = document.getElementById('dataTimeText');
+                dataTimeText.textContent = data.data_time;
+                dataUpdateTimeDiv.style.display = 'block';
+            }
+            
             // 加载所有区域经理（不依赖战区）
             await loadAllRegionalManagers();
             

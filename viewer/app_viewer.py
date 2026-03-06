@@ -947,7 +947,7 @@ def export_ratings():
 def get_equipment_filters():
     """获取设备异常筛选选项"""
     try:
-        from shared.database_models import EquipmentStatus
+        from shared.database_models import EquipmentStatus, EquipmentImportLog
         session = get_db_session()
         
         # 获取战区列表
@@ -959,10 +959,18 @@ def get_equipment_filters():
             .all()
         war_zones = [wz[0] for wz in war_zones]
         
+        # 获取最新的导入时间
+        latest_log = session.query(EquipmentImportLog)\
+            .order_by(EquipmentImportLog.import_time.desc())\
+            .first()
+        
+        data_time = latest_log.data_time if latest_log and latest_log.data_time else None
+        
         return jsonify({
             'success': True,
             'data': {
-                'war_zones': war_zones
+                'war_zones': war_zones,
+                'data_time': data_time
             }
         })
         
@@ -1027,19 +1035,6 @@ def get_all_equipment_regional_managers():
             .order_by(EquipmentStatus.regional_manager)\
             .all()
         regional_managers = [rm[0] for rm in regional_managers]
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'regional_managers': regional_managers
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'获取区域经理列表失败: {str(e)}'
-        }), 500
         
         return jsonify({
             'success': True,

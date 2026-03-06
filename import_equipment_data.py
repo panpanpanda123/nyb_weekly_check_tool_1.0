@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from shared.database_models import (
     create_db_engine, create_session_factory,
-    EquipmentStatus, StoreWhitelist
+    EquipmentStatus, StoreWhitelist, EquipmentImportLog
 )
 
 # 解析命令行参数
@@ -84,10 +84,33 @@ pos_file = max(pos_files, key=lambda p: p.stat().st_mtime) if pos_files else Non
 stb_file = max(stb_files, key=lambda p: p.stat().st_mtime) if stb_files else None
 operating_store_file = max(operating_store_files, key=lambda p: p.stat().st_mtime)
 
+# 提取文件时间信息
+def extract_data_time(filename):
+    """从文件名提取时间信息，格式：20260306_1131 -> 2026年3月6日 11:31"""
+    import re
+    match = re.search(r'(\d{8})_(\d{4})', filename)
+    if match:
+        date_str = match.group(1)  # 20260306
+        time_str = match.group(2)  # 1131
+        year = date_str[0:4]
+        month = date_str[4:6].lstrip('0')
+        day = date_str[6:8].lstrip('0')
+        hour = time_str[0:2]
+        minute = time_str[2:4]
+        return f"{year}年{month}月{day}日 {hour}:{minute}"
+    return None
+
+pos_data_time = extract_data_time(pos_file.name) if pos_file else None
+stb_data_time = extract_data_time(stb_file.name) if stb_file else None
+
 if pos_file:
     print(f"✅ 找到收银设备文件: {pos_file.name}")
+    if pos_data_time:
+        print(f"   数据时间: {pos_data_time}")
 if stb_file:
     print(f"✅ 找到机顶盒文件: {stb_file.name}")
+    if stb_data_time:
+        print(f"   数据时间: {stb_data_time}")
 print(f"✅ 找到在营门店文件: {operating_store_file.name}")
 print()
 
@@ -333,6 +356,21 @@ if not args.clear_pos and not args.clear_stb:
         if import_stb and stb_file:
             total_imported += stb_count
         print(f"   总计导入: {total_imported} 条记录")
+        
+        # 记录导入日志
+        import_type = 'POS' if (import_pos and not import_stb) else ('机顶盒' if (import_stb and not import_pos) else '全部')
+        data_time = pos_data_time or stb_data_time
+        file_name = (pos_file.name if pos_file else '') + ('; ' + stb_file.name if stb_file else '')
+        
+        log = EquipmentImportLog(
+            import_type=import_type,
+            file_name=file_name,
+            data_time=data_time,
+            import_time=datetime.now()
+        )
+        session.add(log)
+        session.commit()
+        
     except Exception as e:
         print(f"❌ 保存数据失败: {e}")
         session.rollback()
