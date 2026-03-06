@@ -997,6 +997,36 @@ def get_equipment_regional_managers():
             .order_by(EquipmentStatus.regional_manager)\
             .all()
         regional_managers = [rm[0] for rm in regional_managers]
+
+
+@app.route('/api/equipment/all-regional-managers')
+def get_all_equipment_regional_managers():
+    """获取所有区域经理列表（不依赖战区）"""
+    try:
+        from shared.database_models import EquipmentStatus
+        session = get_db_session()
+        
+        # 获取所有区域经理列表
+        regional_managers = session.query(EquipmentStatus.regional_manager)\
+            .filter(EquipmentStatus.regional_manager.isnot(None))\
+            .filter(EquipmentStatus.regional_manager != '')\
+            .distinct()\
+            .order_by(EquipmentStatus.regional_manager)\
+            .all()
+        regional_managers = [rm[0] for rm in regional_managers]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'regional_managers': regional_managers
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取区域经理列表失败: {str(e)}'
+        }), 500
         
         return jsonify({
             'success': True,

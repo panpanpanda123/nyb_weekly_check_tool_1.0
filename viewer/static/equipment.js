@@ -45,6 +45,9 @@ async function loadFilterOptions() {
                 warZoneSelect.innerHTML += `<option value="${wz}">${wz}</option>`;
             });
             
+            // 加载所有区域经理（不依赖战区）
+            await loadAllRegionalManagers();
+            
             console.log('✅ 筛选选项加载完成');
         } else {
             throw new Error(result.error || '加载筛选选项失败');
@@ -52,6 +55,43 @@ async function loadFilterOptions() {
     } catch (error) {
         console.error('加载筛选选项失败:', error);
         throw error;
+    }
+}
+
+// 加载所有区域经理
+async function loadAllRegionalManagers() {
+    try {
+        const response = await fetch(`${API_BASE_PATH}/api/equipment/filters`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const regionalManagerSelect = document.getElementById('regionalManagerFilter');
+            
+            // 获取所有唯一的区域经理
+            const allManagers = new Set();
+            
+            // 从API获取所有区域经理
+            const managersResponse = await fetch(`${API_BASE_PATH}/api/equipment/all-regional-managers`);
+            const managersResult = await managersResponse.json();
+            
+            if (managersResult.success) {
+                managersResult.data.regional_managers.forEach(rm => allManagers.add(rm));
+            }
+            
+            // 填充下拉框
+            regionalManagerSelect.innerHTML = '<option value="">全部</option>';
+            Array.from(allManagers).sort().forEach(rm => {
+                regionalManagerSelect.innerHTML += `<option value="${rm}">${rm}</option>`;
+            });
+            
+            // 启用区域经理选择（不再依赖战区）
+            regionalManagerSelect.disabled = false;
+        }
+    } catch (error) {
+        console.error('加载所有区域经理失败:', error);
+        // 如果新API不存在，使用旧逻辑
+        const regionalManagerSelect = document.getElementById('regionalManagerFilter');
+        regionalManagerSelect.disabled = false;
     }
 }
 
@@ -94,13 +134,11 @@ function setupEventListeners() {
         window.location.href = '/rating';
     });
     
-    // 战区变化 - 级联加载区域经理
+    // 战区变化 - 不再强制级联，只是可选的辅助筛选
     document.getElementById('warZoneFilter').addEventListener('change', async (e) => {
         const warZone = e.target.value;
         filters.war_zone = warZone;
-        filters.regional_manager = '';
-        document.getElementById('regionalManagerFilter').value = '';
-        await loadRegionalManagers(warZone);
+        // 不再清空区域经理选择
     });
     
     // 区域经理变化
@@ -146,7 +184,7 @@ function setupEventListeners() {
     document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('warZoneFilter').value = '';
         document.getElementById('regionalManagerFilter').value = '';
-        document.getElementById('regionalManagerFilter').disabled = true;
+        // 区域经理保持启用状态
         storeSearchInput.value = '';
         clearStoreSearchBtn.style.display = 'none';
         filters = {
