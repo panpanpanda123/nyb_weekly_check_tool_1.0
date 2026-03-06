@@ -61,37 +61,24 @@ async function loadFilterOptions() {
 // 加载所有区域经理
 async function loadAllRegionalManagers() {
     try {
-        const response = await fetch(`${API_BASE_PATH}/api/equipment/filters`);
+        const response = await fetch(`${API_BASE_PATH}/api/equipment/all-regional-managers`);
         const result = await response.json();
         
         if (result.success) {
-            const regionalManagerSelect = document.getElementById('regionalManagerFilter');
+            const datalist = document.getElementById('regionalManagerList');
             
-            // 获取所有唯一的区域经理
-            const allManagers = new Set();
-            
-            // 从API获取所有区域经理
-            const managersResponse = await fetch(`${API_BASE_PATH}/api/equipment/all-regional-managers`);
-            const managersResult = await managersResponse.json();
-            
-            if (managersResult.success) {
-                managersResult.data.regional_managers.forEach(rm => allManagers.add(rm));
-            }
-            
-            // 填充下拉框
-            regionalManagerSelect.innerHTML = '<option value="">全部</option>';
-            Array.from(allManagers).sort().forEach(rm => {
-                regionalManagerSelect.innerHTML += `<option value="${rm}">${rm}</option>`;
+            // 清空并填充datalist
+            datalist.innerHTML = '';
+            result.data.regional_managers.forEach(rm => {
+                const option = document.createElement('option');
+                option.value = rm;
+                datalist.appendChild(option);
             });
             
-            // 启用区域经理选择（不再依赖战区）
-            regionalManagerSelect.disabled = false;
+            console.log(`✅ 加载了 ${result.data.regional_managers.length} 个区域经理`);
         }
     } catch (error) {
         console.error('加载所有区域经理失败:', error);
-        // 如果新API不存在，使用旧逻辑
-        const regionalManagerSelect = document.getElementById('regionalManagerFilter');
-        regionalManagerSelect.disabled = false;
     }
 }
 
@@ -141,9 +128,14 @@ function setupEventListeners() {
         // 不再清空区域经理选择
     });
     
-    // 区域经理变化
-    document.getElementById('regionalManagerFilter').addEventListener('change', (e) => {
-        filters.regional_manager = e.target.value;
+    // 区域经理输入变化
+    const regionalManagerInput = document.getElementById('regionalManagerFilter');
+    regionalManagerInput.addEventListener('input', (e) => {
+        filters.regional_manager = e.target.value.trim();
+    });
+    
+    regionalManagerInput.addEventListener('change', (e) => {
+        filters.regional_manager = e.target.value.trim();
     });
     
     // 门店搜索
@@ -184,7 +176,7 @@ function setupEventListeners() {
     document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('warZoneFilter').value = '';
         document.getElementById('regionalManagerFilter').value = '';
-        // 区域经理保持启用状态
+        // 区域经理输入框保持启用
         storeSearchInput.value = '';
         clearStoreSearchBtn.style.display = 'none';
         filters = {
