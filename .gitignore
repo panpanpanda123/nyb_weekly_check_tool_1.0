@@ -75,3 +75,13 @@ desktop.ini
 *.tmp
 *.bak
 *.backup
+
+# 密码和密钥文件（安全）
+server_password.txt
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+plink.exe
+pscp.exe
+putty.exe
