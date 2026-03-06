@@ -367,7 +367,7 @@ h1 {
 /* 筛选区域样式 */
 .filter-section {
     background-color: #f8f9fa;
-    padding: 20px;
+    padding: 15px;
     border-radius: 10px;
 }
 
@@ -376,6 +376,26 @@ h1 {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
     margin-bottom: 15px;
+}
+
+/* 紧凑型筛选行 - 战区和区域经理并排 */
+.filter-row-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.filter-item-half {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-item-half label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #34495e;
 }
 
 .filter-item {
@@ -1013,6 +1033,20 @@ h1 {
         padding: 10px;
     }
     
+    .filter-row-compact {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .filter-item-half {
+        gap: 3px;
+    }
+    
+    .filter-item-half label {
+        font-size: 12px;
+    }
+    
     .filter-row {
         grid-template-columns: 1fr;
         gap: 10px;
@@ -1495,8 +1529,8 @@ h1 {
 /* 门店卡片紧凑布局 */
 .store-card {
     background: white;
-    border-radius: 10px;
-    padding: 15px;
+    border-radius: 8px;
+    padding: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: all 0.3s;
 }
@@ -1510,8 +1544,8 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
-    gap: 10px;
+    margin-bottom: 10px;
+    gap: 8px;
 }
 
 .store-info {
@@ -1520,31 +1554,31 @@ h1 {
 }
 
 .store-name {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: #2c3e50;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .store-id {
-    font-size: 12px;
+    font-size: 11px;
     color: #7f8c8d;
 }
 
 .store-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
 }
 
 .badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 10px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -1565,14 +1599,14 @@ h1 {
 }
 
 .store-body {
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .equipment-group {
-    margin-bottom: 15px;
-    padding: 12px;
+    margin-bottom: 10px;
+    padding: 8px;
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 6px;
 }
 
 .equipment-group:last-child {
@@ -1580,29 +1614,78 @@ h1 {
 }
 
 .equipment-group-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #34495e;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #dee2e6;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #dee2e6;
 }
 
 .equipment-list-items {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px;
 }
 
 .equipment-item-inline {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.equipment-type-badge {
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+}
+
+.equipment-type-badge.type-pos {
+    background: #007bff;
+}
+
+.equipment-type-badge.type-stb {
+    background: #6c757d;
+}
+
+.equipment-status-badge {
+    padding: 2px 6px;
+    background: #dc3545;
+    color: white;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.equipment-name-text {
+    color: #495057;
+    font-size: 11px;
+}
+
+.processing-actions {
+    display: flex;
     gap: 6px;
-    padding: 6px 10px;
-    background: #f8f9fa;
+    margin-top: 8px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
     border-radius: 4px;
+    cursor: pointer;
     font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    min-height: 36px;
 }
 
 /* 列表模式样式 - 用于战区/领导查看 */
@@ -1917,10 +2000,10 @@ h1 {
 }
 
 .processing-status {
-    padding: 12px 15px;
-    border-radius: 6px;
-    margin-bottom: 8px;
-    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1928,40 +2011,40 @@ h1 {
 
 .processing-status.status-processed {
     background: #d4edda;
-    border-left: 4px solid #28a745;
+    border-left: 3px solid #28a745;
 }
 
 .processing-status.status-not-cooperate {
     background: #f8d7da;
-    border-left: 4px solid #dc3545;
+    border-left: 3px solid #dc3545;
 }
 
 .processing-status.status-special {
     background: #fff3cd;
-    border-left: 4px solid #ffc107;
+    border-left: 3px solid #ffc107;
 }
 
 .status-label {
     font-weight: 600;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 .status-reason {
     color: #666;
-    font-size: 13px;
+    font-size: 11px;
     margin-left: 4px;
 }
 
 .edit-processing-btn {
-    padding: 4px 12px;
+    padding: 3px 8px;
     background: #6c757d;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     transition: all 0.2s;
-    margin-left: 10px;
+    margin-left: 8px;
 }
 
 .edit-processing-btn:hover {
@@ -1973,9 +2056,9 @@ h1 {
 }
 
 .processing-time {
-    font-size: 12px;
+    font-size: 10px;
     color: #999;
-    margin-top: 4px;
+    margin-top: 3px;
 }
 
 .pagination-container {
@@ -2083,13 +2166,14 @@ h1 {
     
     /* 门店卡片移动端优化 */
     .store-card {
-        padding: 12px;
-        border-radius: 8px;
+        padding: 10px;
+        border-radius: 6px;
     }
     
     .store-header {
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
+        margin-bottom: 8px;
     }
     
     .store-meta {
@@ -2098,26 +2182,81 @@ h1 {
     }
     
     .store-name {
-        font-size: 15px;
+        font-size: 14px;
     }
     
     .store-id {
-        font-size: 11px;
+        font-size: 10px;
     }
     
     .badge {
-        font-size: 10px;
-        padding: 3px 6px;
+        font-size: 9px;
+        padding: 2px 5px;
     }
     
     .equipment-group {
-        padding: 10px;
-        margin-bottom: 12px;
+        padding: 6px;
+        margin-bottom: 8px;
     }
     
     .equipment-group-title {
-        font-size: 13px;
-        margin-bottom: 6px;
+        font-size: 12px;
+        margin-bottom: 4px;
+        padding-bottom: 3px;
+    }
+    
+    .equipment-list-items {
+        gap: 4px;
+        margin-top: 4px;
+    }
+    
+    .equipment-item-inline {
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+    
+    .equipment-status-badge {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+    
+    .equipment-name-text {
+        font-size: 10px;
+    }
+    
+    .processing-actions {
+        gap: 4px;
+        margin-top: 6px;
+    }
+    
+    .action-btn {
+        padding: 8px 10px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+    
+    .processing-status {
+        padding: 6px 8px;
+        margin-top: 6px;
+        font-size: 11px;
+    }
+    
+    .status-label {
+        font-size: 12px;
+    }
+    
+    .status-reason {
+        font-size: 10px;
+    }
+    
+    .edit-processing-btn {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+    
+    .processing-time {
+        font-size: 9px;
+        margin-top: 2px;
     }
     
     /* 列表模式移动端优化 */
