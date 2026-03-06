@@ -65,15 +65,17 @@ async function loadAllRegionalManagers() {
         const result = await response.json();
         
         if (result.success) {
-            const select = document.getElementById('regionalManagerFilter');
+            const datalist = document.getElementById('regionalManagerList');
             
             // 保存所有区域经理到全局变量
             window.allRegionalManagers = result.data.regional_managers;
             
-            // 填充下拉框
-            select.innerHTML = '<option value="">全部</option>';
+            // 填充datalist
+            datalist.innerHTML = '';
             result.data.regional_managers.forEach(rm => {
-                select.innerHTML += `<option value="${rm}">${rm}</option>`;
+                const option = document.createElement('option');
+                option.value = rm;
+                datalist.appendChild(option);
             });
             
             console.log(`✅ 加载了 ${result.data.regional_managers.length} 个区域经理`);
@@ -86,11 +88,18 @@ async function loadAllRegionalManagers() {
 // 根据战区加载区域经理
 async function loadRegionalManagers(warZone) {
     try {
-        const regionalManagerSelect = document.getElementById('regionalManagerFilter');
+        const datalist = document.getElementById('regionalManagerList');
         
         if (!warZone) {
-            regionalManagerSelect.innerHTML = '<option value="">全部</option>';
-            regionalManagerSelect.disabled = true;
+            // 没有战区，显示所有区域经理
+            datalist.innerHTML = '';
+            if (window.allRegionalManagers) {
+                window.allRegionalManagers.forEach(rm => {
+                    const option = document.createElement('option');
+                    option.value = rm;
+                    datalist.appendChild(option);
+                });
+            }
             return;
         }
         
@@ -98,11 +107,12 @@ async function loadRegionalManagers(warZone) {
         const result = await response.json();
         
         if (result.success) {
-            regionalManagerSelect.innerHTML = '<option value="">全部</option>';
+            datalist.innerHTML = '';
             result.data.regional_managers.forEach(rm => {
-                regionalManagerSelect.innerHTML += `<option value="${rm}">${rm}</option>`;
+                const option = document.createElement('option');
+                option.value = rm;
+                datalist.appendChild(option);
             });
-            regionalManagerSelect.disabled = false;
         } else {
             throw new Error(result.error || '加载区域经理失败');
         }
@@ -127,38 +137,25 @@ function setupEventListeners() {
         const warZone = e.target.value;
         filters.war_zone = warZone;
         
-        const regionalManagerSelect = document.getElementById('regionalManagerFilter');
-        const currentValue = regionalManagerSelect.value;
+        const regionalManagerInput = document.getElementById('regionalManagerFilter');
+        const currentValue = regionalManagerInput.value;
         
-        if (warZone) {
-            // 选了战区，加载该战区的区域经理
-            await loadRegionalManagers(warZone);
-        } else {
-            // 没选战区，显示所有区域经理
-            regionalManagerSelect.innerHTML = '<option value="">全部</option>';
-            if (window.allRegionalManagers) {
-                window.allRegionalManagers.forEach(rm => {
-                    regionalManagerSelect.innerHTML += `<option value="${rm}">${rm}</option>`;
-                });
-            }
-        }
+        // 加载对应的区域经理列表
+        await loadRegionalManagers(warZone);
         
-        // 尝试恢复之前的选择
-        if (currentValue) {
-            const option = Array.from(regionalManagerSelect.options).find(opt => opt.value === currentValue);
-            if (option) {
-                regionalManagerSelect.value = currentValue;
-                filters.regional_manager = currentValue;
-            } else {
-                regionalManagerSelect.value = '';
-                filters.regional_manager = '';
-            }
-        }
+        // 清空输入框（因为列表变了）
+        regionalManagerInput.value = '';
+        filters.regional_manager = '';
     });
     
-    // 区域经理变化
-    document.getElementById('regionalManagerFilter').addEventListener('change', (e) => {
-        filters.regional_manager = e.target.value;
+    // 区域经理输入变化
+    const regionalManagerInput = document.getElementById('regionalManagerFilter');
+    regionalManagerInput.addEventListener('input', (e) => {
+        filters.regional_manager = e.target.value.trim();
+    });
+    
+    regionalManagerInput.addEventListener('change', (e) => {
+        filters.regional_manager = e.target.value.trim();
     });
     
     // 门店搜索
@@ -209,11 +206,13 @@ function setupEventListeners() {
         currentPage = 1;
         
         // 恢复显示所有区域经理
-        const regionalManagerSelect = document.getElementById('regionalManagerFilter');
-        regionalManagerSelect.innerHTML = '<option value="">全部</option>';
+        const datalist = document.getElementById('regionalManagerList');
+        datalist.innerHTML = '';
         if (window.allRegionalManagers) {
             window.allRegionalManagers.forEach(rm => {
-                regionalManagerSelect.innerHTML += `<option value="${rm}">${rm}</option>`;
+                const option = document.createElement('option');
+                option.value = rm;
+                datalist.appendChild(option);
             });
         }
         
