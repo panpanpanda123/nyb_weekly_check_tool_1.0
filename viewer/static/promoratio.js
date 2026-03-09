@@ -12,6 +12,17 @@ let currentFilters = {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 绑定导航按钮
+    document.getElementById('reviewTab').addEventListener('click', function() {
+        window.location.href = '/';
+    });
+    document.getElementById('ratingTab').addEventListener('click', function() {
+        window.location.href = '/rating';
+    });
+    document.getElementById('equipmentTab').addEventListener('click', function() {
+        window.location.href = '/equipment';
+    });
+    
     loadFilters();
     loadAllRegionalManagers();
     searchStores();

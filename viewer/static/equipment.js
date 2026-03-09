@@ -141,6 +141,9 @@ function setupEventListeners() {
     document.getElementById('ratingTab').addEventListener('click', () => {
         window.location.href = '/rating';
     });
+    document.getElementById('promoTab').addEventListener('click', () => {
+        window.location.href = '/promoratio';
+    });
     
     // 战区变化 - 动态加载该战区的区域经理
     document.getElementById('warZoneFilter').addEventListener('change', async (e) => {

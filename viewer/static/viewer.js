@@ -75,6 +75,13 @@ function bindFunctionTabs() {
             window.location.href = '/equipment';
         });
     }
+    
+    const promoTab = document.getElementById('promoTab');
+    if (promoTab) {
+        promoTab.addEventListener('click', function() {
+            window.location.href = '/promoratio';
+        });
+    }
 }
 
 // 监听浏览器返回按钮，用于关闭图片模态框

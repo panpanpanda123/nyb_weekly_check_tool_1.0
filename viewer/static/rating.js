@@ -89,6 +89,9 @@ function bindEvents() {
     document.getElementById('equipmentTab').addEventListener('click', function() {
         window.location.href = '/equipment';
     });
+    document.getElementById('promoTab').addEventListener('click', function() {
+        window.location.href = '/promoratio';
+    });
     
     // 战区选择变化 - 级联更新区域经理
     document.getElementById('warZoneFilter').addEventListener('change', async function(e) {
