@@ -57,12 +57,12 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
     if equipment_type != 'POS':
         return False, None, {}
     
-    # 规则1: 当天上午有异常+处理过+下午又异常 = 立即标记
+    # 规则1: 当天上午有异常+标记已恢复+下午又异常 = 立即标记"当天反复"
     today = date.today()
     today_start = datetime.combine(today, datetime.min.time())
     today_end = datetime.combine(today, datetime.max.time())
     
-    # 检查今天上午是否有异常（使用日期范围查询）
+    # 检查今天上午是否有异常快照
     am_abnormal = session.query(EquipmentStatusSnapshot)\
         .filter(EquipmentStatusSnapshot.store_id == store_id)\
         .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
@@ -72,7 +72,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
     
-    # 检查今天下午是否有异常（使用日期范围查询）
+    # 检查今天下午是否有异常快照
     pm_abnormal = session.query(EquipmentStatusSnapshot)\
         .filter(EquipmentStatusSnapshot.store_id == store_id)\
         .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
@@ -82,25 +82,17 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
     
-    # 检查今天上午是否处理过（必须在上午快照之后、下午快照之前）
-    # 这样才能确保是"上午有问题 → 处理了 → 下午又有问题"的顺序
-    am_processing = None
-    if am_abnormal and pm_abnormal:
-        # 获取上午快照的时间
-        am_snapshot_time = am_abnormal.snapshot_date
-        # 获取下午快照的时间
-        pm_snapshot_time = pm_abnormal.snapshot_date
-        
-        # 查找在上午快照之后、下午快照之前的处理记录
-        am_processing = session.query(EquipmentProcessing)\
-            .filter(EquipmentProcessing.store_id == store_id)\
-            .filter(EquipmentProcessing.equipment_type == equipment_type)\
-            .filter(EquipmentProcessing.processed_at >= am_snapshot_time)\
-            .filter(EquipmentProcessing.processed_at < pm_snapshot_time)\
-            .first()
+    # 检查今天是否有"已恢复"的处理记录
+    # 关键：必须是"已恢复"，不是"未恢复"
+    recovered_processing = session.query(EquipmentProcessing)\
+        .filter(EquipmentProcessing.store_id == store_id)\
+        .filter(EquipmentProcessing.equipment_type == equipment_type)\
+        .filter(EquipmentProcessing.processed_at >= today_start)\
+        .filter(EquipmentProcessing.action == '已恢复')\
+        .first()
     
-    if am_abnormal and pm_abnormal and am_processing:
-        # 上午有问题 + 中间处理过 + 下午又有问题 = 立即标记
+    # 触发条件：上午有异常 + 标记已恢复 + 下午又有异常
+    if am_abnormal and pm_abnormal and recovered_processing:
         return True, "多次出问题（当天反复）", {'today_repeat': 1}
     
     # 规则2: 计算各个时间窗口的异常次数（排除今天，避免第一天就触发）
