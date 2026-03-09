@@ -396,7 +396,7 @@ if import_pos and pos_file and not args.clear_pos:
         
         # 检查今天这个时段是否已经创建过快照
         existing_snapshot = session.query(EquipmentStatusSnapshot)\
-            .filter(EquipmentStatusSnapshot.snapshot_date >= date.today())\
+            .filter(EquipmentStatusSnapshot.snapshot_date == date.today())\
             .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)\
             .first()
         
