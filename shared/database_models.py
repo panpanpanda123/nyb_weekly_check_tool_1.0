@@ -307,6 +307,10 @@ class EquipmentProcessing(Base):
     processed_at = Column(DateTime, default=datetime.now, comment='处理时间')
     processed_by = Column(String(100), comment='处理人')
     
+    # 新增：预计恢复时间（用于暂时不提示）
+    expected_recovery_date = Column(DateTime, comment='预计恢复日期')
+    suppressed_until = Column(DateTime, comment='暂时不提示截止日期')
+    
     __table_args__ = (
         Index('idx_processing_store', 'store_id'),
         Index('idx_processing_action', 'action'),
@@ -323,7 +327,51 @@ class EquipmentProcessing(Base):
             'action': self.action,
             'reason': self.reason or '',
             'processed_at': self.processed_at.strftime('%Y-%m-%d %H:%M:%S') if self.processed_at else '',
-            'processed_by': self.processed_by or ''
+            'processed_by': self.processed_by or '',
+            'expected_recovery_date': self.expected_recovery_date.strftime('%Y-%m-%d') if self.expected_recovery_date else None,
+            'suppressed_until': self.suppressed_until.strftime('%Y-%m-%d') if self.suppressed_until else None
+        }
+
+
+class EquipmentStatusSnapshot(Base):
+    """设备异常历史快照表（仅用于POS收银系统）"""
+    __tablename__ = 'equipment_status_snapshot'
+    
+    # 主键
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    
+    # 快照时间信息
+    snapshot_date = Column(DateTime, nullable=False, index=True, comment='快照日期')
+    snapshot_period = Column(String(10), nullable=False, comment='时段标记：AM/PM')
+    
+    # 门店信息
+    store_id = Column(String(50), nullable=False, index=True, comment='门店ID')
+    
+    # 设备类型（仅POS）
+    equipment_type = Column(String(50), nullable=False, comment='设备类型：POS')
+    
+    # 异常标记
+    has_abnormal = Column(Integer, default=0, comment='是否异常：1=异常，0=正常')
+    
+    # 创建时间
+    created_at = Column(DateTime, default=datetime.now, comment='创建时间')
+    
+    __table_args__ = (
+        Index('idx_snapshot_store_date', 'store_id', 'snapshot_date', 'snapshot_period'),
+        Index('idx_snapshot_date', 'snapshot_date'),
+        {'comment': '设备异常历史快照表（仅POS）'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'snapshot_date': self.snapshot_date.strftime('%Y-%m-%d %H:%M:%S') if self.snapshot_date else '',
+            'snapshot_period': self.snapshot_period,
+            'store_id': self.store_id,
+            'equipment_type': self.equipment_type,
+            'has_abnormal': bool(self.has_abnormal),
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else ''
         }
 
 
@@ -342,3 +390,4 @@ def init_viewer_db(engine):
     print(f"  - 表名: {StoreOperationData.__tablename__}")
     print(f"  - 表名: {EquipmentStatus.__tablename__}")
     print(f"  - 表名: {EquipmentProcessing.__tablename__}")
+    print(f"  - 表名: {EquipmentStatusSnapshot.__tablename__}")

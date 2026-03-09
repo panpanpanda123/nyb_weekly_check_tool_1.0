@@ -292,7 +292,7 @@ async function searchEquipment() {
             
             // 根据模式渲染
             if (displayMode === 'list') {
-                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed, data.total_recovered, data.total_not_recovered);
+                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed, data.total_recovered, data.total_not_recovered, data.total_chronic);
             } else {
                 renderEquipmentList(data.stores);
             }
@@ -336,11 +336,14 @@ function renderEquipmentList(stores) {
         const posEquipment = store.equipment.filter(eq => eq.equipment_type === 'POS');
         const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
         
+        // 经常出问题标记（仅POS）
+        const chronicBadge = store.is_chronic ? `<span class="chronic-badge" title="5天${store.abnormal_count_5days}次 / 10天${store.abnormal_count_10days}次">🔴 ${store.chronic_reason}</span>` : '';
+        
         return `
-            <div class="store-card-horizontal" data-store-id="${store.store_id}">
+            <div class="store-card-horizontal ${store.is_chronic ? 'chronic-store' : ''}" data-store-id="${store.store_id}">
                 <!-- 左侧：门店信息 -->
                 <div class="store-info-section">
-                    <div class="store-name-compact">${store.store_name}</div>
+                    <div class="store-name-compact">${store.store_name} ${chronicBadge}</div>
                     <div class="store-meta-inline">
                         <span class="meta-item">${store.war_zone}</span>
                         <span class="meta-item">${store.regional_manager}</span>
@@ -420,7 +423,7 @@ function renderCompactActions(store, equipmentType, processing) {
 }
 
 // 渲染列表模式（战区/领导查看）
-function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed, totalRecovered, totalNotRecovered) {
+function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed, totalRecovered, totalNotRecovered, totalChronic) {
     const container = document.getElementById('resultsContainer');
     
     if (!stores || stores.length === 0) {
@@ -440,6 +443,7 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
     const completedStores = totalProcessed !== undefined ? totalProcessed : (totalStores - pendingStores);
     const recoveredStores = totalRecovered !== undefined ? totalRecovered : 0;
     const notRecoveredStores = totalNotRecovered !== undefined ? totalNotRecovered : 0;
+    const chronicStores = totalChronic !== undefined ? totalChronic : 0;
     
     let html = `
         <div class="list-mode-container">
@@ -465,6 +469,12 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                             <span class="detail-item not-recovered clickable ${listFilterStatus === 'not_recovered' ? 'active' : ''}" onclick="event.stopPropagation(); filterListByStatus('not_recovered')">⚠ 未恢复: ${notRecoveredStores}</span>
                         </div>
                     </div>
+                    ${chronicStores > 0 ? `
+                    <div class="stat-item chronic clickable ${listFilterStatus === 'chronic' ? 'active' : ''}" onclick="filterListByStatus('chronic')">
+                        <div class="stat-number">${chronicStores}</div>
+                        <div class="stat-label">经常出问题</div>
+                    </div>
+                    ` : ''}
                 </div>
                 ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (共 ${stores.length} 家门店，第 ${currentPage} 页)</div>` : ''}
             </div>
@@ -608,11 +618,10 @@ function bindProcessingEvents() {
             const actionsDiv = this.closest('.action-buttons-compact');
             const equipmentType = actionsDiv.dataset.equipmentType;
             const card = this.closest('.store-card-horizontal');
-            const reasonContainer = card.querySelector(`.reason-input-compact[data-equipment-type="${equipmentType}"]`);
+            const storeId = card.dataset.storeId;
             
-            actionsDiv.style.display = 'none';
-            reasonContainer.style.display = 'flex';
-            reasonContainer.querySelector('.input-reason-compact').focus();
+            // 显示预计恢复日期弹窗
+            showExpectedRecoveryDialog(storeId, equipmentType, '');
         });
     });
     
@@ -631,7 +640,9 @@ function bindProcessingEvents() {
             
             const card = this.closest('.store-card-horizontal');
             const storeId = card.dataset.storeId;
-            await processEquipment(storeId, equipmentType, '未恢复', reason);
+            
+            // 显示预计恢复日期弹窗
+            showExpectedRecoveryDialog(storeId, equipmentType, reason);
         });
     });
     
@@ -657,19 +668,26 @@ function bindProcessingEvents() {
 }
 
 // 处理设备异常
-async function processEquipment(storeId, equipmentType, action, reason) {
+async function processEquipment(storeId, equipmentType, action, reason, expectedRecoveryDate = null) {
     try {
+        const requestBody = {
+            store_id: storeId,
+            equipment_type: equipmentType,
+            action: action,
+            reason: reason
+        };
+        
+        // 如果有预计恢复日期，添加到请求体
+        if (expectedRecoveryDate) {
+            requestBody.expected_recovery_date = expectedRecoveryDate;
+        }
+        
         const response = await fetch(`${API_BASE_PATH}/api/equipment/process`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                store_id: storeId,
-                equipment_type: equipmentType,
-                action: action,
-                reason: reason
-            })
+            body: JSON.stringify(requestBody)
         });
         
         const result = await response.json();
@@ -746,7 +764,74 @@ function getFilterStatusText() {
         'all': '全部门店',
         'pending': '待处理门店',
         'recovered': '已恢复门店',
-        'not_recovered': '未恢复门店'
+        'not_recovered': '未恢复门店',
+        'chronic': '经常出问题'
     };
     return statusMap[listFilterStatus] || '全部门店';
+}
+
+// 显示预计恢复日期弹窗
+function showExpectedRecoveryDialog(storeId, equipmentType, currentReason = '') {
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-overlay';
+    dialog.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>⚠ 设备未恢复</h3>
+                <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>未恢复原因: <span class="required">*</span></label>
+                    <textarea id="recoveryReason" class="form-control" rows="3" placeholder="请输入未恢复原因...">${currentReason}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>预计恢复日期: (可选)</label>
+                    <input type="date" id="expectedRecoveryDate" class="form-control" 
+                           min="${getToday()}" max="${getMaxRecoveryDate()}">
+                    <small class="form-text">填写后，在此日期前不会再次提示异常</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitRecovery('${storeId}', '${equipmentType}')">提交</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+}
+
+// 关闭弹窗
+function closeModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// 获取今天的日期字符串
+function getToday() {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+}
+
+// 获取最大恢复日期（今天+7天）
+function getMaxRecoveryDate() {
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 7);
+    return maxDate.toISOString().split('T')[0];
+}
+
+// 提交恢复信息
+async function submitRecovery(storeId, equipmentType) {
+    const reason = document.getElementById('recoveryReason').value.trim();
+    const expectedDate = document.getElementById('expectedRecoveryDate').value;
+    
+    if (!reason) {
+        showToast('请输入未恢复原因', 'error');
+        return;
+    }
+    
+    await processEquipment(storeId, equipmentType, '未恢复', reason, expectedDate);
+    closeModal();
 }

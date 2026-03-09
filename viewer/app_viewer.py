@@ -1075,6 +1075,7 @@ def search_equipment():
     """搜索设备异常（按门店分组）"""
     try:
         from shared.database_models import EquipmentStatus, EquipmentProcessing
+        from equipment_utils import calculate_chronic_stats, should_suppress
         session = get_db_session()
         
         # 获取筛选参数
@@ -1149,6 +1150,10 @@ def search_equipment():
         total_recovered = len(recovered_store_ids)
         total_not_recovered = len(not_recovered_store_ids)
         
+        # 计算经常出问题的门店统计（仅POS）
+        chronic_stats = calculate_chronic_stats(session, all_store_ids)
+        total_chronic = sum(1 for stats in chronic_stats.values() if stats['is_chronic'])
+        
         # 根据状态筛选门店ID
         filtered_store_ids = all_store_ids
         if status_filter == 'pending':
@@ -1160,6 +1165,9 @@ def search_equipment():
         elif status_filter == 'not_recovered':
             # 未恢复：在未恢复列表中的门店
             filtered_store_ids = list(not_recovered_store_ids)
+        elif status_filter == 'chronic':
+            # 经常出问题：满足经常出问题条件的门店
+            filtered_store_ids = [sid for sid in all_store_ids if chronic_stats.get(sid, {}).get('is_chronic', False)]
         
         # 计算筛选后的总数和分页
         filtered_total = len(filtered_store_ids)
@@ -1189,6 +1197,9 @@ def search_equipment():
         stores_data = {}
         for equipment in equipment_list:
             if equipment.store_id not in stores_data:
+                # 获取该门店的经常出问题统计
+                chronic_info = chronic_stats.get(equipment.store_id, {})
+                
                 stores_data[equipment.store_id] = {
                     'store_id': equipment.store_id,
                     'store_name': equipment.store_name,
@@ -1196,7 +1207,12 @@ def search_equipment():
                     'regional_manager': equipment.regional_manager,
                     'equipment': [],
                     'processing_pos': processing_dict.get(f"{equipment.store_id}_POS"),
-                    'processing_stb': processing_dict.get(f"{equipment.store_id}_机顶盒")
+                    'processing_stb': processing_dict.get(f"{equipment.store_id}_机顶盒"),
+                    # 新增：经常出问题统计（仅POS）
+                    'is_chronic': chronic_info.get('is_chronic', False),
+                    'chronic_reason': chronic_info.get('chronic_reason'),
+                    'abnormal_count_5days': chronic_info.get('abnormal_count_5days', 0),
+                    'abnormal_count_10days': chronic_info.get('abnormal_count_10days', 0)
                 }
             stores_data[equipment.store_id]['equipment'].append(equipment.to_dict())
         
@@ -1211,6 +1227,7 @@ def search_equipment():
                 'total_processed': total_processed,
                 'total_recovered': total_recovered,
                 'total_not_recovered': total_not_recovered,
+                'total_chronic': total_chronic,  # 新增：经常出问题的门店总数
                 'filtered_total': filtered_total,  # 筛选后的总数
                 'page': page,
                 'per_page': per_page,
@@ -1231,6 +1248,8 @@ def process_equipment():
     """处理设备异常"""
     try:
         from shared.database_models import EquipmentProcessing
+        from equipment_config import EXPECTED_RECOVERY_MAX_DAYS
+        from datetime import timedelta
         session = get_db_session()
         
         data = request.get_json()
@@ -1238,12 +1257,38 @@ def process_equipment():
         equipment_type = data.get('equipment_type')  # POS/机顶盒
         action = data.get('action')  # 已恢复/未恢复
         reason = data.get('reason', '')
+        expected_recovery_date_str = data.get('expected_recovery_date')  # 预计恢复日期（可选）
         
         if not store_id or not equipment_type or not action:
             return jsonify({
                 'success': False,
                 'error': '缺少必要参数'
             }), 400
+        
+        # 处理预计恢复日期
+        expected_recovery_date = None
+        suppressed_until = None
+        
+        if expected_recovery_date_str:
+            try:
+                expected_recovery_date = datetime.strptime(expected_recovery_date_str, '%Y-%m-%d')
+                
+                # 验证日期不能超过最大天数
+                max_date = datetime.now() + timedelta(days=EXPECTED_RECOVERY_MAX_DAYS)
+                if expected_recovery_date > max_date:
+                    return jsonify({
+                        'success': False,
+                        'error': f'预计恢复日期不能超过{EXPECTED_RECOVERY_MAX_DAYS}天'
+                    }), 400
+                
+                # 设置暂时不提示截止日期
+                suppressed_until = expected_recovery_date
+                
+            except ValueError:
+                return jsonify({
+                    'success': False,
+                    'error': '预计恢复日期格式错误，应为 YYYY-MM-DD'
+                }), 400
         
         # 检查是否已存在处理记录（按门店ID和设备类型）
         existing = session.query(EquipmentProcessing)\
@@ -1256,13 +1301,17 @@ def process_equipment():
             existing.action = action
             existing.reason = reason
             existing.processed_at = datetime.now()
+            existing.expected_recovery_date = expected_recovery_date
+            existing.suppressed_until = suppressed_until
         else:
             # 创建新记录
             processing = EquipmentProcessing(
                 store_id=store_id,
                 equipment_type=equipment_type,
                 action=action,
-                reason=reason
+                reason=reason,
+                expected_recovery_date=expected_recovery_date,
+                suppressed_until=suppressed_until
             )
             session.add(processing)
         

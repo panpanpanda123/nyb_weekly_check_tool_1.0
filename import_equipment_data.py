@@ -186,13 +186,11 @@ print()
 if import_pos and pos_file:
     print("📥 处理收银设备数据...")
     try:
-        # 清空所有旧数据和处理记录（不管什么类型）
-        print("   清空所有旧设备数据和处理记录...")
-        from shared.database_models import EquipmentProcessing
-        session.query(EquipmentProcessing).delete()
-        session.query(EquipmentStatus).delete()
+        # 只清空POS设备数据（保留处理记录）
+        print("   清空旧POS设备数据...")
+        session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == 'POS').delete()
         session.commit()
-        print("   ✅ 已清空所有旧数据和处理记录")
+        print("   ✅ 已清空旧POS设备数据（保留处理记录）")
         
         df_pos = pd.read_excel(pos_file, header=1)
         
@@ -267,13 +265,11 @@ else:
 if import_stb and stb_file:
     print("📥 处理机顶盒数据...")
     try:
-        # 清空所有旧数据和处理记录（不管什么类型）
-        print("   清空所有旧设备数据和处理记录...")
-        from shared.database_models import EquipmentProcessing
-        session.query(EquipmentProcessing).delete()
-        session.query(EquipmentStatus).delete()
+        # 只清空机顶盒设备数据（保留处理记录）
+        print("   清空旧机顶盒设备数据...")
+        session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == '机顶盒').delete()
         session.commit()
-        print("   ✅ 已清空所有旧数据和处理记录")
+        print("   ✅ 已清空旧机顶盒设备数据（保留处理记录）")
         
         df_stb = pd.read_excel(stb_file)
         
@@ -377,7 +373,87 @@ if not args.clear_pos and not args.clear_stb:
         session.close()
         sys.exit(1)
 
-# 8. 关闭连接
+# 8. 创建快照（仅POS）
+if import_pos and pos_file and not args.clear_pos:
+    print()
+    print("📸 创建POS异常快照...")
+    try:
+        from shared.database_models import EquipmentStatusSnapshot
+        from equipment_config import (
+            SNAPSHOT_RETENTION_DAYS, 
+            PROCESSING_RETENTION_DAYS,
+            AM_PM_BOUNDARY_HOUR,
+            AUTO_CLEANUP_OLD_SNAPSHOTS
+        )
+        from datetime import date, timedelta
+        
+        # 判断当前是上午还是下午
+        current_hour = datetime.now().hour
+        snapshot_period = 'AM' if current_hour < AM_PM_BOUNDARY_HOUR else 'PM'
+        snapshot_date = datetime.now()
+        
+        print(f"   时段: {snapshot_period} ({'上午' if snapshot_period == 'AM' else '下午'})")
+        
+        # 检查今天这个时段是否已经创建过快照
+        existing_snapshot = session.query(EquipmentStatusSnapshot)\
+            .filter(EquipmentStatusSnapshot.snapshot_date >= date.today())\
+            .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)\
+            .first()
+        
+        if existing_snapshot:
+            print(f"   ⚠️  今天{snapshot_period}时段的快照已存在，跳过创建")
+        else:
+            # 获取所有有POS异常的门店
+            abnormal_stores = session.query(EquipmentStatus.store_id)\
+                .filter(EquipmentStatus.equipment_type == 'POS')\
+                .distinct()\
+                .all()
+            
+            snapshot_count = 0
+            for (store_id,) in abnormal_stores:
+                snapshot = EquipmentStatusSnapshot(
+                    snapshot_date=snapshot_date,
+                    snapshot_period=snapshot_period,
+                    store_id=store_id,
+                    equipment_type='POS',
+                    has_abnormal=1,
+                    created_at=datetime.now()
+                )
+                session.add(snapshot)
+                snapshot_count += 1
+            
+            session.commit()
+            print(f"   ✅ 创建 {snapshot_count} 条快照记录")
+        
+        # 清理旧快照
+        if AUTO_CLEANUP_OLD_SNAPSHOTS:
+            cutoff_date = date.today() - timedelta(days=SNAPSHOT_RETENTION_DAYS)
+            deleted_count = session.query(EquipmentStatusSnapshot)\
+                .filter(EquipmentStatusSnapshot.snapshot_date < cutoff_date)\
+                .delete()
+            
+            if deleted_count > 0:
+                session.commit()
+                print(f"   🗑️  清理 {deleted_count} 条过期快照（保留最近{SNAPSHOT_RETENTION_DAYS}天）")
+        
+        # 清理旧处理记录
+        from shared.database_models import EquipmentProcessing
+        processing_cutoff_date = date.today() - timedelta(days=PROCESSING_RETENTION_DAYS)
+        deleted_processing = session.query(EquipmentProcessing)\
+            .filter(EquipmentProcessing.processed_at < processing_cutoff_date)\
+            .delete()
+        
+        if deleted_processing > 0:
+            session.commit()
+            print(f"   🗑️  清理 {deleted_processing} 条过期处理记录（保留最近{PROCESSING_RETENTION_DAYS}天）")
+        
+    except Exception as e:
+        print(f"❌ 创建快照失败: {e}")
+        import traceback
+        traceback.print_exc()
+        session.rollback()
+
+# 9. 关闭连接
 session.close()
 
 print()

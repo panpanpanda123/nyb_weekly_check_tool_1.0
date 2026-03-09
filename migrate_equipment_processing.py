@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 """
-迁移脚本：为 equipment_processing 表添加 equipment_type 字段
-Migration Script: Add equipment_type column to equipment_processing table
+设备异常处理表迁移脚本
+Migration script for equipment processing table
 """
-import sys
 import os
+import sys
 from pathlib import Path
 
 # 添加项目根目录到 Python 路径
@@ -13,89 +12,135 @@ if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
 from sqlalchemy import text
-from shared.database_models import create_db_engine, get_database_url
+from shared.database_models import create_db_engine
 
-def migrate_equipment_processing():
-    """迁移 equipment_processing 表"""
-    try:
-        # 获取数据库连接
-        database_url = get_database_url()
-        engine = create_db_engine(database_url, echo=True)
-        
-        print("=" * 60)
-        print("开始迁移 equipment_processing 表...")
-        print("=" * 60)
-        
-        with engine.connect() as conn:
-            # 检查表是否存在
+# 数据库配置
+DATABASE_URL = os.getenv(
+    'DATABASE_URL',
+    'postgresql://postgres:postgres@127.0.0.1:5432/configurable_ops'
+)
+
+def run_migration():
+    """运行数据库迁移"""
+    print("🚀 开始数据库迁移...")
+    
+    engine = create_db_engine(DATABASE_URL, echo=False)
+    
+    with engine.connect() as conn:
+        try:
+            # 1. 创建 equipment_status_snapshot 表
+            print("\n📋 创建 equipment_status_snapshot 表...")
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS equipment_status_snapshot (
+                    id SERIAL PRIMARY KEY,
+                    store_id VARCHAR(50) NOT NULL,
+                    equipment_type VARCHAR(20) NOT NULL,
+                    snapshot_date DATE NOT NULL,
+                    snapshot_period VARCHAR(2) NOT NULL,
+                    has_abnormal INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT unique_snapshot UNIQUE (store_id, equipment_type, snapshot_date, snapshot_period)
+                )
+            """))
+            conn.commit()
+            print("✅ equipment_status_snapshot 表创建成功")
+            
+            # 2. 创建索引
+            print("\n📋 创建索引...")
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_snapshot_store_type_date 
+                ON equipment_status_snapshot (store_id, equipment_type, snapshot_date)
+            """))
+            conn.commit()
+            print("✅ 索引创建成功")
+            
+            # 3. 检查 equipment_processing 表是否存在 expected_recovery_date 字段
+            print("\n📋 检查 equipment_processing 表字段...")
             result = conn.execute(text("""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_name = 'equipment_processing'
-                );
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'equipment_processing' 
+                AND column_name = 'expected_recovery_date'
             """))
-            table_exists = result.scalar()
             
-            if not table_exists:
-                print("❌ equipment_processing 表不存在，无需迁移")
-                return
+            if result.fetchone() is None:
+                print("📋 添加 expected_recovery_date 字段...")
+                conn.execute(text("""
+                    ALTER TABLE equipment_processing 
+                    ADD COLUMN expected_recovery_date TIMESTAMP
+                """))
+                conn.commit()
+                print("✅ expected_recovery_date 字段添加成功")
+            else:
+                print("ℹ️  expected_recovery_date 字段已存在，跳过")
             
-            # 检查 equipment_type 列是否已存在
+            # 4. 检查 equipment_processing 表是否存在 suppressed_until 字段
             result = conn.execute(text("""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.columns 
-                    WHERE table_name = 'equipment_processing' 
-                    AND column_name = 'equipment_type'
-                );
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'equipment_processing' 
+                AND column_name = 'suppressed_until'
             """))
-            column_exists = result.scalar()
             
-            if column_exists:
-                print("✓ equipment_type 列已存在，无需迁移")
-                return
+            if result.fetchone() is None:
+                print("📋 添加 suppressed_until 字段...")
+                conn.execute(text("""
+                    ALTER TABLE equipment_processing 
+                    ADD COLUMN suppressed_until TIMESTAMP
+                """))
+                conn.commit()
+                print("✅ suppressed_until 字段添加成功")
+            else:
+                print("ℹ️  suppressed_until 字段已存在，跳过")
             
-            print("\n1. 清空现有处理记录（因为需要添加必需字段）...")
-            conn.execute(text("DELETE FROM equipment_processing;"))
-            conn.commit()
-            print("   ✓ 已清空处理记录")
-            
-            print("\n2. 添加 equipment_type 列...")
+            # 5. 创建 equipment_import_log 表（如果不存在）
+            print("\n📋 创建 equipment_import_log 表...")
             conn.execute(text("""
-                ALTER TABLE equipment_processing 
-                ADD COLUMN equipment_type VARCHAR(50) NOT NULL DEFAULT 'POS';
+                CREATE TABLE IF NOT EXISTS equipment_import_log (
+                    id SERIAL PRIMARY KEY,
+                    import_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    data_time VARCHAR(50),
+                    pos_count INTEGER DEFAULT 0,
+                    stb_count INTEGER DEFAULT 0,
+                    total_count INTEGER DEFAULT 0
+                )
             """))
             conn.commit()
-            print("   ✓ 已添加 equipment_type 列")
+            print("✅ equipment_import_log 表创建成功")
             
-            print("\n3. 创建复合索引...")
-            conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_processing_store_type 
-                ON equipment_processing(store_id, equipment_type);
-            """))
-            conn.commit()
-            print("   ✓ 已创建索引 idx_processing_store_type")
+            print("\n" + "="*50)
+            print("✅ 数据库迁移完成！")
+            print("="*50)
             
-            print("\n4. 移除默认值...")
-            conn.execute(text("""
-                ALTER TABLE equipment_processing 
-                ALTER COLUMN equipment_type DROP DEFAULT;
-            """))
-            conn.commit()
-            print("   ✓ 已移除默认值")
+            # 显示统计信息
+            print("\n📊 数据统计:")
             
-        print("\n" + "=" * 60)
-        print("✅ 迁移完成！")
-        print("=" * 60)
-        print("\n注意事项：")
-        print("- 所有旧的处理记录已被清空")
-        print("- 新的处理记录将按设备类型（POS/机顶盒）分别记录")
-        print("- 请重新运行 import_equipment_data.py 导入设备数据")
-        
-    except Exception as e:
-        print(f"\n❌ 迁移失败: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+            # 快照表记录数
+            result = conn.execute(text("SELECT COUNT(*) FROM equipment_status_snapshot"))
+            snapshot_count = result.fetchone()[0]
+            print(f"  - 快照记录数: {snapshot_count}")
+            
+            # 处理记录数
+            result = conn.execute(text("SELECT COUNT(*) FROM equipment_processing"))
+            processing_count = result.fetchone()[0]
+            print(f"  - 处理记录数: {processing_count}")
+            
+            # 导入日志记录数
+            result = conn.execute(text("SELECT COUNT(*) FROM equipment_import_log"))
+            log_count = result.fetchone()[0]
+            print(f"  - 导入日志数: {log_count}")
+            
+            print("\n✅ 迁移验证通过！")
+            
+        except Exception as e:
+            print(f"\n❌ 迁移失败: {str(e)}")
+            conn.rollback()
+            raise
+
 
 if __name__ == '__main__':
-    migrate_equipment_processing()
+    try:
+        run_migration()
+    except Exception as e:
+        print(f"\n❌ 发生错误: {str(e)}")
+        sys.exit(1)
