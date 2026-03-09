@@ -274,6 +274,11 @@ async function searchEquipment() {
             ...filters
         });
         
+        // 如果是列表模式且有状态筛选，添加状态筛选参数
+        if (displayMode === 'list' && listFilterStatus !== 'all') {
+            params.append('status_filter', listFilterStatus);
+        }
+        
         const response = await fetch(`${API_BASE_PATH}/api/equipment/search?${params}`);
         const result = await response.json();
         
@@ -281,8 +286,9 @@ async function searchEquipment() {
             const data = result.data;
             totalPages = data.total_pages;
             
-            // 更新统计信息
-            document.getElementById('resultCount').textContent = `异常门店: ${data.total_stores}`;
+            // 更新统计信息 - 显示筛选后的数量
+            const displayCount = listFilterStatus !== 'all' && data.filtered_total !== undefined ? data.filtered_total : data.total_stores;
+            document.getElementById('resultCount').textContent = `异常门店: ${displayCount}`;
             
             // 根据模式渲染
             if (displayMode === 'list') {
@@ -435,26 +441,6 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
     const recoveredStores = totalRecovered !== undefined ? totalRecovered : 0;
     const notRecoveredStores = totalNotRecovered !== undefined ? totalNotRecovered : 0;
     
-    // 根据筛选状态过滤门店列表
-    let filteredStores = stores;
-    if (listFilterStatus === 'pending') {
-        filteredStores = stores.filter(s => !s.processing_pos && !s.processing_stb);
-    } else if (listFilterStatus === 'recovered') {
-        filteredStores = stores.filter(s => {
-            const hasProcessing = s.processing_pos || s.processing_stb;
-            if (!hasProcessing) return false;
-            const posRecovered = !s.processing_pos || s.processing_pos.action === '已恢复';
-            const stbRecovered = !s.processing_stb || s.processing_stb.action === '已恢复';
-            return posRecovered && stbRecovered;
-        });
-    } else if (listFilterStatus === 'not_recovered') {
-        filteredStores = stores.filter(s => {
-            const posNotRecovered = s.processing_pos && s.processing_pos.action === '未恢复';
-            const stbNotRecovered = s.processing_stb && s.processing_stb.action === '未恢复';
-            return posNotRecovered || stbNotRecovered;
-        });
-    }
-    
     let html = `
         <div class="list-mode-container">
             <div class="summary-section">
@@ -480,12 +466,12 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                         </div>
                     </div>
                 </div>
-                ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (${filteredStores.length}家门店)</div>` : ''}
+                ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (共 ${stores.length} 家门店，第 ${currentPage} 页)</div>` : ''}
             </div>
     `;
     
-    // 渲染门店列表
-    filteredStores.forEach(store => {
+    // 渲染门店列表（后端已经过滤，直接显示）
+    stores.forEach(store => {
         const posEquipment = store.equipment.filter(eq => eq.equipment_type === 'POS');
         const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
         const isPending = !store.processing_pos && !store.processing_stb;
@@ -744,12 +730,14 @@ function showToast(message, type = 'info') {
 // 列表模式筛选功能
 function filterListByStatus(status) {
     listFilterStatus = status;
+    currentPage = 1; // 重置到第一页
     // 重新搜索以刷新列表
     searchEquipment();
 }
 
 function clearListFilter() {
     listFilterStatus = 'all';
+    currentPage = 1; // 重置到第一页
     searchEquipment();
 }
 

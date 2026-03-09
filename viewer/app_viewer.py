@@ -1081,6 +1081,7 @@ def search_equipment():
         war_zone = request.args.get('war_zone', '').strip()
         regional_manager = request.args.get('regional_manager', '').strip()
         store_search = request.args.get('store_search', '').strip()
+        status_filter = request.args.get('status_filter', '').strip()  # 新增：状态筛选 all/pending/recovered/not_recovered
         
         # 获取分页参数
         page = int(request.args.get('page', 1))
@@ -1105,7 +1106,7 @@ def search_equipment():
         if regional_manager:
             store_query = store_query.filter(EquipmentStatus.regional_manager == regional_manager)
         
-        # 获取总门店数
+        # 获取总门店数（未应用状态筛选前）
         total_stores = store_query.count()
         
         # 计算总体统计数据（待处理和已处理门店数）
@@ -1148,8 +1149,26 @@ def search_equipment():
         total_recovered = len(recovered_store_ids)
         total_not_recovered = len(not_recovered_store_ids)
         
+        # 根据状态筛选门店ID
+        filtered_store_ids = all_store_ids
+        if status_filter == 'pending':
+            # 待处理：不在已处理列表中的门店
+            filtered_store_ids = [sid for sid in all_store_ids if sid not in processed_store_ids]
+        elif status_filter == 'recovered':
+            # 已恢复：在已恢复列表中的门店
+            filtered_store_ids = list(recovered_store_ids)
+        elif status_filter == 'not_recovered':
+            # 未恢复：在未恢复列表中的门店
+            filtered_store_ids = list(not_recovered_store_ids)
+        
+        # 计算筛选后的总数和分页
+        filtered_total = len(filtered_store_ids)
+        filtered_total_pages = (filtered_total + per_page - 1) // per_page if filtered_total > 0 else 1
+        
         # 分页获取门店ID
-        store_ids = [sid[0] for sid in store_query.limit(per_page).offset((page - 1) * per_page).all()]
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        store_ids = filtered_store_ids[start_idx:end_idx]
         
         # 获取这些门店的所有设备异常
         equipment_list = session.query(EquipmentStatus)\
@@ -1182,7 +1201,6 @@ def search_equipment():
             stores_data[equipment.store_id]['equipment'].append(equipment.to_dict())
         
         stores_list = list(stores_data.values())
-        total_pages = (total_stores + per_page - 1) // per_page
         
         return jsonify({
             'success': True,
@@ -1193,10 +1211,11 @@ def search_equipment():
                 'total_processed': total_processed,
                 'total_recovered': total_recovered,
                 'total_not_recovered': total_not_recovered,
+                'filtered_total': filtered_total,  # 筛选后的总数
                 'page': page,
                 'per_page': per_page,
-                'total_pages': total_pages,
-                'has_more': page < total_pages
+                'total_pages': filtered_total_pages,  # 使用筛选后的总页数
+                'has_more': page < filtered_total_pages
             }
         })
         
