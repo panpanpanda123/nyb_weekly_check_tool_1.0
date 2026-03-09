@@ -16,7 +16,7 @@ def get_abnormal_count(session: Session, store_id: str, equipment_type: str, day
         session: 数据库会话
         store_id: 门店ID
         equipment_type: 设备类型（POS/机顶盒）
-        days: 天数
+        days: 天
         
     Returns:
         int: 异常次数
