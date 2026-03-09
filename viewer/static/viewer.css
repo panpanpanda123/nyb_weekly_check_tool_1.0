@@ -1714,7 +1714,14 @@ h1 {
 .summary-stats {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1726,10 +1733,14 @@ h1 {
 .stat-item {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 12px;
+    padding: 15px 12px;
     border-radius: 8px;
     text-align: center;
     transition: all 0.3s;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .stat-item.clickable {
@@ -1759,14 +1770,16 @@ h1 {
 }
 
 .stat-number {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     margin-bottom: 4px;
+    line-height: 1;
 }
 
 .stat-label {
-    font-size: 12px;
-    opacity: 0.9;
+    font-size: 13px;
+    opacity: 0.95;
+    font-weight: 500;
 }
 
 .stat-detail {
@@ -1865,13 +1878,13 @@ h1 {
 /* 列表模式门店卡片 */
 #storeListContainer {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 12px;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 1200px) {
     #storeListContainer {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
