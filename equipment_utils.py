@@ -117,7 +117,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
 
 def should_suppress(session: Session, store_id: str, equipment_type: str) -> bool:
     """
-    判断是否应该暂时不提示
+    判断是否应该暂时不提示（在预计恢复期内）
     
     Args:
         session: 数据库会话
@@ -125,19 +125,24 @@ def should_suppress(session: Session, store_id: str, equipment_type: str) -> boo
         equipment_type: 设备类型
         
     Returns:
-        bool: 是否应该暂时不提示
+        bool: True=暂时不提示（在预计恢复期内），False=需要提示
     """
+    # 查询最新的处理记录
     processing = session.query(EquipmentProcessing)\
         .filter(EquipmentProcessing.store_id == store_id)\
         .filter(EquipmentProcessing.equipment_type == equipment_type)\
+        .order_by(EquipmentProcessing.processed_at.desc())\
         .first()
     
     if processing and processing.suppressed_until:
-        # 如果还在暂时不提示期内
-        if processing.suppressed_until.date() >= date.today():
-            return True
+        # 如果还在暂时不提示期内（预计恢复日期未到）
+        today = date.today()
+        suppressed_date = processing.suppressed_until.date() if hasattr(processing.suppressed_until, 'date') else processing.suppressed_until
+        
+        if suppressed_date >= today:
+            return True  # 暂时不提示
     
-    return False
+    return False  # 需要提示
 
 
 def calculate_chronic_stats(session: Session, store_ids: list) -> dict:

@@ -1114,6 +1114,18 @@ def search_equipment():
         # 获取所有符合条件的门店ID
         all_store_ids = [sid[0] for sid in store_query.all()]
         
+        # 过滤掉在预计恢复期内的门店（暂时不提示）
+        from datetime import date as date_type
+        suppressed_store_ids = set()
+        for store_id in all_store_ids:
+            # 检查POS是否在暂时不提示期内
+            if should_suppress(session, store_id, 'POS'):
+                suppressed_store_ids.add(store_id)
+        
+        # 从列表中移除被暂时不提示的门店
+        all_store_ids = [sid for sid in all_store_ids if sid not in suppressed_store_ids]
+        total_stores = len(all_store_ids)  # 更新总数
+        
         # 获取所有这些门店的处理记录
         all_processing_records = session.query(EquipmentProcessing)\
             .filter(EquipmentProcessing.store_id.in_(all_store_ids))\
