@@ -1,8 +1,11 @@
 // 活动参与度监控 JavaScript
 
-// 全局变量
+const API_BASE_PATH = '';
+
+// 全局状态
 let currentPage = 1;
-let currentFilters = {
+let totalPages = 1;
+let filters = {
     war_zone: '',
     regional_manager: '',
     store_search: '',
@@ -12,36 +15,26 @@ let currentFilters = {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 绑定导航按钮
-    document.getElementById('reviewTab').addEventListener('click', function() {
-        window.location.href = '/';
-    });
-    document.getElementById('ratingTab').addEventListener('click', function() {
-        window.location.href = '/rating';
-    });
-    document.getElementById('equipmentTab').addEventListener('click', function() {
-        window.location.href = '/equipment';
-    });
-    
-    loadFilters();
-    loadAllRegionalManagers();
-    searchStores();
-    
-    // 绑定事件
-    document.getElementById('warZoneFilter').addEventListener('change', onWarZoneChange);
-    document.getElementById('storeSearch').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            searchStores();
-        }
-    });
-    document.getElementById('sortByFilter').addEventListener('change', searchStores);
-    document.getElementById('sortOrderFilter').addEventListener('change', searchStores);
+    console.log('🚀 活动参与度监控页面加载开始...');
+    initPromoPage();
 });
 
-// 加载筛选选项
-async function loadFilters() {
+// 初始化页面
+async function initPromoPage() {
     try {
-        const response = await fetch('/api/promo/filters');
+        await loadFilterOptions();
+        setupEventListeners();
+        console.log('✅ 活动参与度监控页面初始化完成');
+    } catch (error) {
+        console.error('❌ 页面初始化失败:', error);
+        showToast('页面初始化失败，请刷新重试', 'error');
+    }
+}
+
+// 加载筛选选项
+async function loadFilterOptions() {
+    try {
+        const response = await fetch(`${API_BASE_PATH}/api/promo/filters`);
         const result = await response.json();
         
         if (result.success) {
@@ -49,237 +42,407 @@ async function loadFilters() {
             
             // 填充战区选项
             const warZoneSelect = document.getElementById('warZoneFilter');
-            data.war_zones.forEach(zone => {
-                const option = document.createElement('option');
-                option.value = zone;
-                option.textContent = zone;
-                warZoneSelect.appendChild(option);
+            warZoneSelect.innerHTML = '<option value="">全部</option>';
+            data.war_zones.forEach(wz => {
+                warZoneSelect.innerHTML += `<option value="${wz}">${wz}</option>`;
             });
             
             // 显示数据日期
             if (data.data_date) {
-                document.getElementById('dataDate').textContent = data.data_date;
-                document.getElementById('dataTimeInfo').style.display = 'block';
+                const dataTimeInfo = document.getElementById('dataTimeInfo');
+                const dataDate = document.getElementById('dataDate');
+                dataDate.textContent = data.data_date;
+                dataTimeInfo.style.display = 'block';
             }
+            
+            // 加载所有区域经理（不依赖战区）
+            await loadAllRegionalManagers();
+            
+            console.log('✅ 筛选选项加载完成');
+        } else {
+            throw new Error(result.error || '加载筛选选项失败');
         }
     } catch (error) {
         console.error('加载筛选选项失败:', error);
+        throw error;
     }
 }
 
-
-// 加载所有区域经理（不依赖战区）
+// 加载所有区域经理
 async function loadAllRegionalManagers() {
     try {
-        const response = await fetch('/api/promo/all-regional-managers');
+        const response = await fetch(`${API_BASE_PATH}/api/promo/all-regional-managers`);
         const result = await response.json();
         
         if (result.success) {
-            const select = document.getElementById('regionalManagerFilter');
-            // 清空现有选项（保留"全部"选项）
-            select.innerHTML = '<option value="">全部区域经理</option>';
+            const datalist = document.getElementById('regionalManagerList');
             
-            result.data.regional_managers.forEach(manager => {
+            // 保存所有区域经理到全局变量
+            window.allRegionalManagers = result.data.regional_managers;
+            
+            // 填充datalist
+            datalist.innerHTML = '';
+            result.data.regional_managers.forEach(rm => {
                 const option = document.createElement('option');
-                option.value = manager;
-                option.textContent = manager;
-                select.appendChild(option);
+                option.value = rm;
+                datalist.appendChild(option);
             });
+            
+            console.log(`✅ 加载了 ${result.data.regional_managers.length} 个区域经理`);
         }
     } catch (error) {
-        console.error('加载区域经理列表失败:', error);
+        console.error('加载所有区域经理失败:', error);
     }
 }
 
-// 战区变更事件
-async function onWarZoneChange() {
-    const warZone = document.getElementById('warZoneFilter').value;
-    
-    if (!warZone) {
-        // 如果没有选择战区，加载所有区域经理
-        loadAllRegionalManagers();
-        return;
-    }
-    
+// 根据战区加载区域经理
+async function loadRegionalManagers(warZone) {
     try {
-        const response = await fetch(`/api/promo/regional-managers?war_zone=${encodeURIComponent(warZone)}`);
+        const datalist = document.getElementById('regionalManagerList');
+        
+        if (!warZone) {
+            // 没有战区，显示所有区域经理
+            datalist.innerHTML = '';
+            if (window.allRegionalManagers) {
+                window.allRegionalManagers.forEach(rm => {
+                    const option = document.createElement('option');
+                    option.value = rm;
+                    datalist.appendChild(option);
+                });
+            }
+            return;
+        }
+        
+        const response = await fetch(`${API_BASE_PATH}/api/promo/regional-managers?war_zone=${encodeURIComponent(warZone)}`);
         const result = await response.json();
         
         if (result.success) {
-            const select = document.getElementById('regionalManagerFilter');
-            select.innerHTML = '<option value="">全部区域经理</option>';
-            
-            result.data.regional_managers.forEach(manager => {
+            datalist.innerHTML = '';
+            result.data.regional_managers.forEach(rm => {
                 const option = document.createElement('option');
-                option.value = manager;
-                option.textContent = manager;
-                select.appendChild(option);
+                option.value = rm;
+                datalist.appendChild(option);
             });
+        } else {
+            throw new Error(result.error || '加载区域经理失败');
         }
     } catch (error) {
-        console.error('加载区域经理列表失败:', error);
+        console.error('加载区域经理失败:', error);
+        showToast('加载区域经理失败', 'error');
     }
+}
+
+// 设置事件监听
+function setupEventListeners() {
+    // 选项卡切换
+    document.getElementById('reviewTab').addEventListener('click', () => {
+        window.location.href = '/';
+    });
+    document.getElementById('ratingTab').addEventListener('click', () => {
+        window.location.href = '/rating';
+    });
+    document.getElementById('equipmentTab').addEventListener('click', () => {
+        window.location.href = '/equipment';
+    });
+    
+    // 战区变化 - 动态加载该战区的区域经理
+    document.getElementById('warZoneFilter').addEventListener('change', async (e) => {
+        const warZone = e.target.value;
+        filters.war_zone = warZone;
+        
+        const regionalManagerInput = document.getElementById('regionalManagerFilter');
+        
+        // 加载对应的区域经理列表
+        await loadRegionalManagers(warZone);
+        
+        // 清空输入框（因为列表变了）
+        regionalManagerInput.value = '';
+        filters.regional_manager = '';
+    });
+    
+    // 区域经理输入变化
+    const regionalManagerInput = document.getElementById('regionalManagerFilter');
+    regionalManagerInput.addEventListener('input', (e) => {
+        filters.regional_manager = e.target.value.trim();
+    });
+    
+    regionalManagerInput.addEventListener('change', (e) => {
+        filters.regional_manager = e.target.value.trim();
+    });
+    
+    // 门店搜索
+    const storeSearchInput = document.getElementById('storeSearch');
+    const storeSearchBtn = document.getElementById('storeSearchBtn');
+    const clearStoreSearchBtn = document.getElementById('clearStoreSearchBtn');
+    
+    storeSearchBtn.addEventListener('click', () => {
+        filters.store_search = storeSearchInput.value.trim();
+        if (filters.store_search) {
+            clearStoreSearchBtn.style.display = 'inline-block';
+        }
+        currentPage = 1;
+        searchStores();
+    });
+    
+    clearStoreSearchBtn.addEventListener('click', () => {
+        storeSearchInput.value = '';
+        filters.store_search = '';
+        clearStoreSearchBtn.style.display = 'none';
+        currentPage = 1;
+        searchStores();
+    });
+    
+    storeSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            storeSearchBtn.click();
+        }
+    });
+    
+    // 排序方式变化
+    document.getElementById('sortByFilter').addEventListener('change', (e) => {
+        filters.sort_by = e.target.value;
+    });
+    
+    document.getElementById('sortOrderFilter').addEventListener('change', (e) => {
+        filters.sort_order = e.target.value;
+    });
+    
+    // 搜索按钮
+    document.getElementById('searchBtn').addEventListener('click', () => {
+        currentPage = 1;
+        searchStores();
+    });
+    
+    // 清除筛选按钮
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        document.getElementById('warZoneFilter').value = '';
+        document.getElementById('regionalManagerFilter').value = '';
+        storeSearchInput.value = '';
+        clearStoreSearchBtn.style.display = 'none';
+        document.getElementById('sortByFilter').value = 'participation_rate';
+        document.getElementById('sortOrderFilter').value = 'desc';
+        
+        filters = {
+            war_zone: '',
+            regional_manager: '',
+            store_search: '',
+            sort_by: 'participation_rate',
+            sort_order: 'desc'
+        };
+        currentPage = 1;
+        
+        // 恢复显示所有区域经理
+        const datalist = document.getElementById('regionalManagerList');
+        datalist.innerHTML = '';
+        if (window.allRegionalManagers) {
+            window.allRegionalManagers.forEach(rm => {
+                const option = document.createElement('option');
+                option.value = rm;
+                datalist.appendChild(option);
+            });
+        }
+        
+        // 清空结果显示欢迎消息
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-icon">📊</div>
+                <h2>欢迎使用活动参与度监控系统</h2>
+                <p>请选择筛选条件并点击"搜索"按钮查看活动参与度</p>
+            </div>
+        `;
+        document.getElementById('paginationContainer').style.display = 'none';
+        document.getElementById('resultCount').textContent = '门店总数: 0';
+    });
+    
+    // 导出按钮
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+    
+    // 上一页
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            searchStores();
+        }
+    });
+    
+    // 下一页
+    document.getElementById('nextPage').addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            searchStores();
+        }
+    });
 }
 
 // 搜索门店
 async function searchStores(page = 1) {
     currentPage = page;
     
-    // 更新筛选条件
-    currentFilters.war_zone = document.getElementById('warZoneFilter').value;
-    currentFilters.regional_manager = document.getElementById('regionalManagerFilter').value;
-    currentFilters.store_search = document.getElementById('storeSearch').value.trim();
-    currentFilters.sort_by = document.getElementById('sortByFilter').value;
-    currentFilters.sort_order = document.getElementById('sortOrderFilter').value;
-    
-    // 显示加载提示
-    showLoading(true);
-    
     try {
+        showLoading();
+        
+        // 构建查询参数
         const params = new URLSearchParams({
             page: currentPage,
             per_page: 20,
-            ...currentFilters
+            ...filters
         });
         
-        const response = await fetch(`/api/promo/search?${params}`);
+        const response = await fetch(`${API_BASE_PATH}/api/promo/search?${params}`);
         const result = await response.json();
         
         if (result.success) {
-            displayStores(result.data);
+            const data = result.data;
+            totalPages = data.total_pages;
+            
+            // 更新统计信息
+            document.getElementById('resultCount').textContent = `门店总数: ${data.total}`;
+            
+            // 渲染门店列表
+            renderStoreList(data.stores);
+            
+            // 更新分页
+            if (data.total > 0) {
+                document.getElementById('paginationContainer').style.display = 'flex';
+                document.getElementById('prevPage').disabled = currentPage === 1;
+                document.getElementById('nextPage').disabled = !data.has_more;
+                document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
+            } else {
+                document.getElementById('paginationContainer').style.display = 'none';
+            }
+            
         } else {
-            alert('搜索失败: ' + result.error);
+            throw new Error(result.error || '搜索失败');
         }
     } catch (error) {
         console.error('搜索失败:', error);
-        alert('搜索失败，请稍后重试');
-    } finally {
-        showLoading(false);
+        showError('搜索失败，请重试');
     }
 }
 
-
-// 显示门店列表
-function displayStores(data) {
-    const container = document.getElementById('storeListContainer');
+// 渲染门店列表
+function renderStoreList(stores) {
+    const container = document.getElementById('resultsContainer');
     
-    // 更新统计信息
-    document.getElementById('totalStores').textContent = data.total;
-    
-    // 清空容器
-    container.innerHTML = '';
-    
-    if (data.stores.length === 0) {
+    if (!stores || stores.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">📊</div>
-                <div class="empty-state-text">暂无数据</div>
-                <div class="empty-state-hint">请尝试调整筛选条件</div>
+            <div class="welcome-message">
+                <div class="welcome-icon">📭</div>
+                <h2>暂无活动参与度数据</h2>
+                <p>当前筛选条件下没有找到门店数据</p>
             </div>
         `;
-        document.getElementById('pagination').innerHTML = '';
         return;
     }
     
-    // 渲染门店卡片
-    data.stores.forEach(store => {
-        const card = createStoreCard(store);
-        container.appendChild(card);
-    });
-    
-    // 渲染分页
-    renderPagination(data);
+    container.innerHTML = stores.map(store => {
+        // 将参与度转换为百分比格式
+        const participationRate = parseFloat(store.participation_rate) || 0;
+        const participationPercent = (participationRate * 100).toFixed(1);
+        
+        // 根据参与度设置颜色
+        let rateColor = '#dc3545'; // 红色 - 低
+        if (participationRate >= 0.8) {
+            rateColor = '#28a745'; // 绿色 - 高
+        } else if (participationRate >= 0.5) {
+            rateColor = '#ffc107'; // 黄色 - 中
+        }
+        
+        return `
+            <div class="store-card-horizontal" data-store-id="${store.store_id}">
+                <!-- 左侧：门店信息 -->
+                <div class="store-info-section">
+                    <div class="store-name-compact">${escapeHtml(store.store_name)}</div>
+                    <div class="store-meta-inline">
+                        <span class="meta-item">ID: ${escapeHtml(store.store_id)}</span>
+                        <span class="meta-item">${escapeHtml(store.war_zone || '-')}</span>
+                        <span class="meta-item">${escapeHtml(store.regional_manager || '-')}</span>
+                    </div>
+                </div>
+                
+                <!-- 中间：数据指标 -->
+                <div class="equipment-info-section">
+                    <div class="promo-metrics-inline">
+                        <div class="metric-compact">
+                            <span class="metric-label-compact">订单量</span>
+                            <span class="metric-value-compact">${store.order_count}</span>
+                        </div>
+                        <div class="metric-compact">
+                            <span class="metric-label-compact">权益卡</span>
+                            <span class="metric-value-compact">${store.benefit_card_sales}</span>
+                        </div>
+                        <div class="metric-compact">
+                            <span class="metric-label-compact">活动套餐</span>
+                            <span class="metric-value-compact">${store.promo_package_sales}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右侧：参与度 -->
+                <div class="actions-section">
+                    <div class="participation-rate-badge" style="background-color: ${rateColor}">
+                        ${participationPercent}%
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
-// 创建门店卡片
-function createStoreCard(store) {
-    const card = document.createElement('div');
-    card.className = 'store-card';
-    
-    card.innerHTML = `
-        <div class="store-header">
-            <div class="store-info">
-                <div class="store-title">
-                    ${store.store_name || store.store_id}
-                </div>
-                <div class="store-meta">
-                    <span>门店ID: ${store.store_id}</span>
-                    <span>战区: ${store.war_zone || '-'}</span>
-                    <span>区域经理: ${store.regional_manager || '-'}</span>
-                </div>
-            </div>
-            <div class="participation-badge">
-                ${store.participation_rate}
-            </div>
-        </div>
-        <div class="promo-metrics">
-            <div class="metric-item">
-                <div class="metric-label">订单量</div>
-                <div class="metric-value">${store.order_count}</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">权益卡销量</div>
-                <div class="metric-value">${store.benefit_card_sales}</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">活动套餐销量</div>
-                <div class="metric-value">${store.promo_package_sales}</div>
-            </div>
+// 显示加载中
+function showLoading() {
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">⏳</div>
+            <h2>加载中...</h2>
+            <p>正在获取活动参与度数据</p>
         </div>
     `;
-    
-    return card;
 }
 
-// 渲染分页
-function renderPagination(data) {
-    const pagination = document.getElementById('pagination');
-    pagination.innerHTML = '';
-    
-    if (data.total_pages <= 1) {
-        return;
-    }
-    
-    // 上一页按钮
-    if (data.page > 1) {
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'page-btn';
-        prevBtn.textContent = '上一页';
-        prevBtn.onclick = () => searchStores(data.page - 1);
-        pagination.appendChild(prevBtn);
-    }
-    
-    // 页码信息
-    const pageInfo = document.createElement('span');
-    pageInfo.className = 'page-info';
-    pageInfo.textContent = `第 ${data.page} / ${data.total_pages} 页`;
-    pagination.appendChild(pageInfo);
-    
-    // 下一页按钮
-    if (data.has_more) {
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'page-btn';
-        nextBtn.textContent = '下一页';
-        nextBtn.onclick = () => searchStores(data.page + 1);
-        pagination.appendChild(nextBtn);
-    }
-}
-
-// 显示/隐藏加载提示
-function showLoading(show) {
-    const indicator = document.getElementById('loadingIndicator');
-    indicator.style.display = show ? 'flex' : 'none';
+// 显示错误
+function showError(message) {
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = `
+        <div class="welcome-message">
+            <div class="welcome-icon">❌</div>
+            <h2>加载失败</h2>
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
 }
 
 // 导出数据
 async function exportData() {
     try {
-        showLoading(true);
-        window.location.href = '/api/promo/export';
+        showToast('正在导出...', 'info');
+        window.location.href = `${API_BASE_PATH}/api/promo/export`;
+        setTimeout(() => {
+            showToast('✓ 导出成功', 'success');
+        }, 1000);
     } catch (error) {
         console.error('导出失败:', error);
-        alert('导出失败，请稍后重试');
-    } finally {
-        setTimeout(() => showLoading(false), 1000);
+        showToast('✗ 导出失败', 'error');
     }
+}
+
+// 显示提示消息
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// HTML转义函数，防止XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

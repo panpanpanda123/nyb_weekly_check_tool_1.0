@@ -1,177 +1,173 @@
-/* 活动参与度监控样式 */
+/* 活动参与度监控样式 - 统一使用设备异常页面风格 */
 
-/* 数据时间提示 */
-.data-time-info {
-    background: #e3f2fd;
-    border-left: 4px solid #2196F3;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    font-size: 14px;
-    color: #1976D2;
-}
-
-.data-time-info strong {
-    font-weight: 600;
-    color: #0D47A1;
-}
-
-/* 门店卡片样式 */
-.store-card {
+/* 门店卡片 - 横向布局 */
+.store-card-horizontal {
     background: white;
     border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 16px;
     transition: all 0.3s ease;
 }
 
-.store-card:hover {
+.store-card-horizontal:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transform: translateY(-2px);
 }
 
-.store-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #f0f0f0;
-}
-
-.store-info {
+/* 门店信息区域 */
+.store-info-section {
     flex: 1;
+    min-width: 0;
 }
 
-.store-title {
-    font-size: 18px;
+.store-name-compact {
+    font-size: 16px;
     font-weight: 600;
     color: #333;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.store-meta {
+.store-meta-inline {
     display: flex;
-    gap: 16px;
-    font-size: 14px;
+    gap: 12px;
+    font-size: 13px;
     color: #666;
+    flex-wrap: wrap;
 }
 
-.store-meta span {
-    display: flex;
+.meta-item {
+    display: inline-flex;
     align-items: center;
 }
 
-.store-meta span::before {
+.meta-item::before {
     content: "•";
     margin-right: 6px;
     color: #999;
 }
 
-/* 参与度徽章 */
-.participation-badge {
-    font-size: 32px;
-    font-weight: 700;
-    padding: 12px 24px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.meta-item:first-child::before {
+    content: "";
+    margin-right: 0;
 }
 
-/* 数据指标 */
-.promo-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
+/* 数据指标区域 */
+.equipment-info-section {
+    flex: 2;
+    min-width: 0;
 }
 
-.metric-item {
+.promo-metrics-inline {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.metric-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px;
     background: #f8f9fa;
-    padding: 16px;
     border-radius: 6px;
-    text-align: center;
-    transition: all 0.3s ease;
+    min-width: 80px;
 }
 
-.metric-item:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-}
-
-.metric-label {
-    font-size: 13px;
+.metric-label-compact {
+    font-size: 12px;
     color: #666;
-    margin-bottom: 8px;
-    font-weight: 500;
+    margin-bottom: 4px;
 }
 
-.metric-value {
-    font-size: 24px;
+.metric-value-compact {
+    font-size: 18px;
     font-weight: 700;
     color: #333;
 }
 
-/* 订单量 */
-.metric-item:nth-child(1) .metric-value {
-    color: #2196F3;
-}
-
-/* 权益卡销量 */
-.metric-item:nth-child(2) .metric-value {
-    color: #4CAF50;
-}
-
-/* 活动套餐销量 */
-.metric-item:nth-child(3) .metric-value {
-    color: #FF9800;
-}
-
-/* 空状态 */
-.empty-state {
+/* 参与度徽章 */
+.participation-rate-badge {
+    font-size: 24px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
     text-align: center;
-    padding: 60px 20px;
-    color: #999;
+    min-width: 80px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.empty-state-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+/* 操作区域 */
+.actions-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
 }
 
-.empty-state-text {
-    font-size: 16px;
-    margin-bottom: 8px;
-}
-
-.empty-state-hint {
-    font-size: 14px;
-    color: #bbb;
-}
-
-/* 响应式设计 */
+/* 移动端优化 */
 @media (max-width: 768px) {
-    .store-header {
+    .store-card-horizontal {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 12px;
     }
-
-    .participation-badge {
-        font-size: 24px;
-        padding: 8px 16px;
+    
+    .store-info-section,
+    .equipment-info-section {
+        flex: none;
+        width: 100%;
     }
-
-    .promo-metrics {
-        grid-template-columns: 1fr;
+    
+    .promo-metrics-inline {
+        justify-content: space-around;
     }
-
-    .store-meta {
-        flex-direction: column;
-        gap: 8px;
+    
+    .metric-compact {
+        flex: 1;
+        min-width: 70px;
     }
+    
+    .participation-rate-badge {
+        font-size: 20px;
+        padding: 10px 16px;
+    }
+    
+    .actions-section {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+
+/* 欢迎消息 */
+.welcome-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.welcome-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.6;
+}
+
+.welcome-message h2 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.welcome-message p {
+    font-size: 16px;
+    color: #999;
 }
 
 /* 加载动画 */
