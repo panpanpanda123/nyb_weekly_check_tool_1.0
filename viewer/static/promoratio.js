@@ -10,7 +10,7 @@ let filters = {
     regional_manager: '',
     store_search: '',
     sort_by: 'participation_rate',
-    sort_order: 'desc'
+    sort_order: 'asc'  // 默认升序，低的在前
 };
 
 // 页面加载完成后初始化
@@ -227,7 +227,7 @@ function setupEventListeners() {
             regional_manager: '',
             store_search: '',
             sort_by: 'participation_rate',
-            sort_order: 'desc'
+            sort_order: 'asc'  // 默认升序
         };
         currentPage = 1;
         
@@ -350,39 +350,32 @@ function renderStoreList(stores) {
         }
         
         return `
-            <div class="store-card-horizontal" data-store-id="${store.store_id}">
-                <!-- 左侧：门店信息 -->
-                <div class="store-info-section">
-                    <div class="store-name-compact">${escapeHtml(store.store_name)}</div>
-                    <div class="store-meta-inline">
-                        <span class="meta-item">ID: ${escapeHtml(store.store_id)}</span>
-                        <span class="meta-item">${escapeHtml(store.war_zone || '-')}</span>
-                        <span class="meta-item">${escapeHtml(store.regional_manager || '-')}</span>
+            <div class="store-card-compact" data-store-id="${store.store_id}">
+                <!-- 门店信息 -->
+                <div class="store-info-compact">
+                    <div class="store-name-mini">${escapeHtml(store.store_name)}</div>
+                    <div class="store-meta-mini">
+                        ${escapeHtml(store.store_id)} · ${escapeHtml(store.war_zone || '-')} · ${escapeHtml(store.regional_manager || '-')}
                     </div>
                 </div>
                 
-                <!-- 中间：数据指标 -->
-                <div class="equipment-info-section">
-                    <div class="promo-metrics-inline">
-                        <div class="metric-compact">
-                            <span class="metric-label-compact">订单量</span>
-                            <span class="metric-value-compact">${store.order_count}</span>
-                        </div>
-                        <div class="metric-compact">
-                            <span class="metric-label-compact">权益卡</span>
-                            <span class="metric-value-compact">${store.benefit_card_sales}</span>
-                        </div>
-                        <div class="metric-compact">
-                            <span class="metric-label-compact">活动套餐</span>
-                            <span class="metric-value-compact">${store.promo_package_sales}</span>
-                        </div>
+                <!-- 数据指标 - 紧凑排列 -->
+                <div class="metrics-compact">
+                    <div class="metric-mini">
+                        <span class="metric-value-mini">${store.order_count}</span>
+                        <span class="metric-label-mini">订单</span>
                     </div>
-                </div>
-                
-                <!-- 右侧：参与度 -->
-                <div class="actions-section">
-                    <div class="participation-rate-badge" style="background-color: ${rateColor}">
-                        ${participationPercent}%
+                    <div class="metric-mini">
+                        <span class="metric-value-mini">${store.benefit_card_sales}</span>
+                        <span class="metric-label-mini">权益卡</span>
+                    </div>
+                    <div class="metric-mini">
+                        <span class="metric-value-mini">${store.promo_package_sales}</span>
+                        <span class="metric-label-mini">套餐</span>
+                    </div>
+                    <div class="metric-mini participation">
+                        <span class="metric-value-mini" style="color: ${rateColor}; font-weight: 700;">${participationPercent}%</span>
+                        <span class="metric-label-mini">参与度</span>
                     </div>
                 </div>
             </div>

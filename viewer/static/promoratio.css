@@ -183,3 +183,133 @@
 .loading-card {
     animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* 超紧凑卡片布局 - 4个指标横向排列 */
+.store-card-compact {
+    background: white;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+}
+
+.store-card-compact:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
+}
+
+/* 门店信息 - 紧凑显示 */
+.store-info-compact {
+    margin-bottom: 10px;
+}
+
+.store-name-mini {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.store-meta-mini {
+    font-size: 12px;
+    color: #666;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 指标容器 - 4个指标横向排列 */
+.metrics-compact {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+/* 单个指标 - 紧凑样式 */
+.metric-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    padding: 8px 6px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    min-width: 0;
+}
+
+.metric-mini.participation {
+    background: #f0f8ff;
+}
+
+.metric-value-mini {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+.metric-label-mini {
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+}
+
+/* 移动端优化 - 保持4个指标横向排列 */
+@media (max-width: 768px) {
+    .store-card-compact {
+        padding: 10px 12px;
+        margin-bottom: 8px;
+    }
+    
+    .store-name-mini {
+        font-size: 14px;
+    }
+    
+    .store-meta-mini {
+        font-size: 11px;
+    }
+    
+    .metrics-compact {
+        gap: 8px;
+    }
+    
+    .metric-mini {
+        padding: 6px 4px;
+    }
+    
+    .metric-value-mini {
+        font-size: 14px;
+    }
+    
+    .metric-label-mini {
+        font-size: 10px;
+    }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+    .store-card-compact {
+        padding: 8px 10px;
+    }
+    
+    .metrics-compact {
+        gap: 6px;
+    }
+    
+    .metric-mini {
+        padding: 5px 3px;
+    }
+    
+    .metric-value-mini {
+        font-size: 13px;
+    }
+    
+    .metric-label-mini {
+        font-size: 9px;
+    }
+}
