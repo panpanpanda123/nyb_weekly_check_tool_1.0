@@ -1118,12 +1118,35 @@ def search_equipment():
             .all()
         
         # 统计已处理的门店（有任何一种设备类型被处理就算已处理）
+        # 同时统计"已恢复"和"未恢复"的门店数
         processed_store_ids = set()
+        recovered_store_ids = set()  # 已恢复的门店
+        not_recovered_store_ids = set()  # 未恢复的门店
+        
+        # 按门店分组处理记录
+        store_processing = {}
         for p in all_processing_records:
-            processed_store_ids.add(p.store_id)
+            if p.store_id not in store_processing:
+                store_processing[p.store_id] = []
+            store_processing[p.store_id].append(p)
+        
+        # 判断每个门店的状态
+        for store_id, records in store_processing.items():
+            processed_store_ids.add(store_id)
+            
+            # 如果所有处理记录都是"已恢复"，则算作已恢复门店
+            # 如果有任何一个是"未恢复"，则算作未恢复门店
+            has_not_recovered = any(r.action == '未恢复' for r in records)
+            
+            if has_not_recovered:
+                not_recovered_store_ids.add(store_id)
+            else:
+                recovered_store_ids.add(store_id)
         
         total_processed = len(processed_store_ids)
         total_pending = total_stores - total_processed
+        total_recovered = len(recovered_store_ids)
+        total_not_recovered = len(not_recovered_store_ids)
         
         # 分页获取门店ID
         store_ids = [sid[0] for sid in store_query.limit(per_page).offset((page - 1) * per_page).all()]
@@ -1168,6 +1191,8 @@ def search_equipment():
                 'total_stores': total_stores,
                 'total_pending': total_pending,
                 'total_processed': total_processed,
+                'total_recovered': total_recovered,
+                'total_not_recovered': total_not_recovered,
                 'page': page,
                 'per_page': per_page,
                 'total_pages': total_pages,

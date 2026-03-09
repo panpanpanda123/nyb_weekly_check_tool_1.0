@@ -284,7 +284,7 @@ async function searchEquipment() {
             
             // 根据模式渲染
             if (displayMode === 'list') {
-                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed);
+                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed, data.total_recovered, data.total_not_recovered);
             } else {
                 renderEquipmentList(data.stores);
             }
@@ -412,7 +412,7 @@ function renderCompactActions(store, equipmentType, processing) {
 }
 
 // 渲染列表模式（战区/领导查看）
-function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed) {
+function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed, totalRecovered, totalNotRecovered) {
     const container = document.getElementById('resultsContainer');
     
     if (!stores || stores.length === 0) {
@@ -430,6 +430,8 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
     const totalStores = totalStoresCount || stores.length;
     const pendingStores = totalPending !== undefined ? totalPending : stores.filter(s => !s.processing_pos && !s.processing_stb).length;
     const completedStores = totalProcessed !== undefined ? totalProcessed : (totalStores - pendingStores);
+    const recoveredStores = totalRecovered !== undefined ? totalRecovered : 0;
+    const notRecoveredStores = totalNotRecovered !== undefined ? totalNotRecovered : 0;
     
     let html = `
         <div class="list-mode-container">
@@ -447,6 +449,10 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                     <div class="stat-item completed">
                         <div class="stat-number">${completedStores}</div>
                         <div class="stat-label">已处理门店</div>
+                        <div class="stat-detail">
+                            <span class="detail-item recovered">✓ 已恢复: ${recoveredStores}</span>
+                            <span class="detail-item not-recovered">⚠ 未恢复: ${notRecoveredStores}</span>
+                        </div>
                     </div>
                 </div>
             </div>

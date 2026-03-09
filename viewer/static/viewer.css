@@ -1744,6 +1744,35 @@ h1 {
     opacity: 0.9;
 }
 
+.stat-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.detail-item {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.detail-item.recovered {
+    background: rgba(40, 167, 69, 0.3);
+}
+
+.detail-item.not-recovered {
+    background: rgba(255, 193, 7, 0.3);
+}
+
 /* 列表模式门店卡片 */
 .store-list-item {
     background: white;
@@ -2261,7 +2290,7 @@ h1 {
     
     /* 列表模式移动端优化 */
     .summary-stats {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
         gap: 8px;
     }
     
@@ -2275,6 +2304,19 @@ h1 {
     
     .stat-label {
         font-size: 11px;
+    }
+    
+    .stat-detail {
+        flex-direction: row;
+        gap: 6px;
+        margin-top: 6px;
+        padding-top: 6px;
+    }
+    
+    .detail-item {
+        flex: 1;
+        font-size: 10px;
+        padding: 2px 4px;
     }
     
     .store-list-item {
