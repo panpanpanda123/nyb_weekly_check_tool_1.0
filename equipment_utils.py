@@ -8,7 +8,7 @@ from shared.database_models import EquipmentStatusSnapshot, EquipmentProcessing
 from equipment_config import CHRONIC_RULES, SNAPSHOT_RETENTION_DAYS
 
 
-def get_abnormal_count(session: Session, store_id: str, equipment_type: str, days: int) -> int:
+def get_abnormal_count(session: Session, store_id: str, equipment_type: str, days: int, exclude_today: bool = True) -> int:
     """
     获取最近N天内的异常次数
     
@@ -17,18 +17,25 @@ def get_abnormal_count(session: Session, store_id: str, equipment_type: str, day
         store_id: 门店ID
         equipment_type: 设备类型（POS/机顶盒）
         days: 天
+        exclude_today: 是否排除今天（默认True，避免第一天就触发）
         
     Returns:
         int: 异常次数
     """
     cutoff_date = date.today() - timedelta(days=days)
     
-    count = session.query(EquipmentStatusSnapshot)\
+    query = session.query(EquipmentStatusSnapshot)\
         .filter(EquipmentStatusSnapshot.store_id == store_id)\
         .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
         .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff_date)\
-        .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
-        .count()
+        .filter(EquipmentStatusSnapshot.has_abnormal == 1)
+    
+    # 排除今天的快照（避免第一天就触发"经常出问题"）
+    if exclude_today:
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        query = query.filter(EquipmentStatusSnapshot.snapshot_date < today_start)
+    
+    count = query.count()
     
     return count
 
@@ -44,7 +51,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         
     Returns:
         tuple: (是否经常出问题, 触发原因描述, 异常次数字典)
-        例如: (True, "5天内3次", {'5days': 3, '10days': 4})
+        例如: (True, "多次出问题（当天反复）", {'5days': 3, '10days': 4, 'today_repeat': 1})
     """
     # 只对POS启用历史追踪
     if equipment_type != 'POS':
@@ -75,22 +82,32 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
     
-    # 检查今天是否处理过
-    today_processing = session.query(EquipmentProcessing)\
-        .filter(EquipmentProcessing.store_id == store_id)\
-        .filter(EquipmentProcessing.equipment_type == equipment_type)\
-        .filter(EquipmentProcessing.processed_at >= today_start)\
-        .first()
+    # 检查今天上午是否处理过（必须在上午快照之后、下午快照之前）
+    # 这样才能确保是"上午有问题 → 处理了 → 下午又有问题"的顺序
+    am_processing = None
+    if am_abnormal and pm_abnormal:
+        # 获取上午快照的时间
+        am_snapshot_time = am_abnormal.snapshot_date
+        # 获取下午快照的时间
+        pm_snapshot_time = pm_abnormal.snapshot_date
+        
+        # 查找在上午快照之后、下午快照之前的处理记录
+        am_processing = session.query(EquipmentProcessing)\
+            .filter(EquipmentProcessing.store_id == store_id)\
+            .filter(EquipmentProcessing.equipment_type == equipment_type)\
+            .filter(EquipmentProcessing.processed_at >= am_snapshot_time)\
+            .filter(EquipmentProcessing.processed_at < pm_snapshot_time)\
+            .first()
     
-    if am_abnormal and pm_abnormal and today_processing:
-        # 上午有问题 + 处理过 + 下午又有问题 = 立即标记
-        return True, "当天反复", {'today_repeat': 1}
+    if am_abnormal and pm_abnormal and am_processing:
+        # 上午有问题 + 中间处理过 + 下午又有问题 = 立即标记
+        return True, "多次出问题（当天反复）", {'today_repeat': 1}
     
-    # 规则2: 计算各个时间窗口的异常次数
+    # 规则2: 计算各个时间窗口的异常次数（排除今天，避免第一天就触发）
     abnormal_counts = {}
     for rule in CHRONIC_RULES:
         days = rule['days']
-        count = get_abnormal_count(session, store_id, equipment_type, days)
+        count = get_abnormal_count(session, store_id, equipment_type, days, exclude_today=True)
         abnormal_counts[f'{days}days'] = count
     
     # 检查是否满足任一规则
@@ -100,7 +117,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         count = abnormal_counts[f'{days}days']
         
         if count >= threshold:
-            reason = f"{days}天{count}次"
+            reason = f"多次出问题（{days}天{count}次）"
             return True, reason, abnormal_counts
     
     return False, None, abnormal_counts
