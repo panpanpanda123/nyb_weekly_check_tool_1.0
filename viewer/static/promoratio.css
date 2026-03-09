@@ -1,0 +1,189 @@
+/* 活动参与度监控样式 */
+
+/* 数据时间提示 */
+.data-time-info {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #1976D2;
+}
+
+.data-time-info strong {
+    font-weight: 600;
+    color: #0D47A1;
+}
+
+/* 门店卡片样式 */
+.store-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.store-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.store-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.store-info {
+    flex: 1;
+}
+
+.store-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.store-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: #666;
+}
+
+.store-meta span {
+    display: flex;
+    align-items: center;
+}
+
+.store-meta span::before {
+    content: "•";
+    margin-right: 6px;
+    color: #999;
+}
+
+/* 参与度徽章 */
+.participation-badge {
+    font-size: 32px;
+    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 数据指标 */
+.promo-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.metric-item {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.metric-item:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.metric-label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* 订单量 */
+.metric-item:nth-child(1) .metric-value {
+    color: #2196F3;
+}
+
+/* 权益卡销量 */
+.metric-item:nth-child(2) .metric-value {
+    color: #4CAF50;
+}
+
+/* 活动套餐销量 */
+.metric-item:nth-child(3) .metric-value {
+    color: #FF9800;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state-text {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.empty-state-hint {
+    font-size: 14px;
+    color: #bbb;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .store-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .participation-badge {
+        font-size: 24px;
+        padding: 8px 16px;
+    }
+
+    .promo-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .store-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* 加载动画 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-card {
+    animation: pulse 1.5s ease-in-out infinite;
+}

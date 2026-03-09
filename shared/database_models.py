@@ -375,6 +375,68 @@ class EquipmentStatusSnapshot(Base):
         }
 
 
+class PromoParticipation(Base):
+    """活动参与度模型"""
+    __tablename__ = 'promo_participation'
+    
+    # 主键
+    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    
+    # 门店信息
+    store_id = Column(String(50), nullable=False, comment='门店ID')
+    store_name = Column(String(255), comment='门店名称')
+    war_zone = Column(String(50), comment='战区')
+    regional_manager = Column(String(50), comment='区域经理')
+    
+    # 活动数据
+    order_count = Column(Integer, default=0, comment='订单量（F列）')
+    benefit_card_sales = Column(Integer, default=0, comment='权益卡销量（I列）')
+    promo_package_sales = Column(Integer, default=0, comment='活动套餐销量（J列）')
+    participation_rate = Column(String(20), comment='活动参与度（K列）')
+    
+    # 数据时间
+    data_date = Column(String(20), comment='数据日期（如：2026-03-09）')
+    import_time = Column(DateTime, default=datetime.now, comment='导入时间')
+    
+    __table_args__ = (
+        Index('idx_promo_store_id', 'store_id'),
+        Index('idx_promo_war_zone', 'war_zone'),
+        Index('idx_promo_regional_manager', 'regional_manager'),
+        Index('idx_promo_data_date', 'data_date'),
+        {'comment': '活动参与度表'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'store_id': self.store_id,
+            'store_name': self.store_name,
+            'war_zone': self.war_zone,
+            'regional_manager': self.regional_manager,
+            'order_count': self.order_count,
+            'benefit_card_sales': self.benefit_card_sales,
+            'promo_package_sales': self.promo_package_sales,
+            'participation_rate': self.participation_rate,
+            'data_date': self.data_date,
+            'import_time': self.import_time.strftime('%Y-%m-%d %H:%M:%S') if self.import_time else ''
+        }
+
+
+class PromoImportLog(Base):
+    """活动参与度导入日志"""
+    __tablename__ = 'promo_import_log'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    data_date = Column(String(20), comment='数据日期')
+    import_time = Column(DateTime, default=datetime.now, comment='导入时间')
+    records_count = Column(Integer, comment='导入记录数')
+    
+    __table_args__ = (
+        {'comment': '活动参与度导入日志'}
+    )
+
+
 def init_viewer_db(engine):
     """
     初始化展示系统数据库表
@@ -391,3 +453,5 @@ def init_viewer_db(engine):
     print(f"  - 表名: {EquipmentStatus.__tablename__}")
     print(f"  - 表名: {EquipmentProcessing.__tablename__}")
     print(f"  - 表名: {EquipmentStatusSnapshot.__tablename__}")
+    print(f"  - 表名: {PromoParticipation.__tablename__}")
+    print(f"  - 表名: {PromoImportLog.__tablename__}")

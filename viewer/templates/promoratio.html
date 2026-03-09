@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活动参与度监控</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='viewer.css') }}?v={{ range(1, 10000) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='promoratio.css') }}?v={{ range(1, 10000) | random }}">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <div class="header">
+            <h1>活动参与度监控</h1>
+            <div class="nav-tabs">
+                <a href="/" class="nav-tab">周清审核</a>
+                <a href="/rating" class="nav-tab">门店评级</a>
+                <a href="/equipment" class="nav-tab">设备异常</a>
+                <a href="/promoratio" class="nav-tab active">活动参与度</a>
+            </div>
+        </div>
+
+        <!-- 筛选区域 -->
+        <div class="filters">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>战区：</label>
+                    <select id="warZoneFilter">
+                        <option value="">全部战区</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>区域经理：</label>
+                    <select id="regionalManagerFilter">
+                        <option value="">全部区域经理</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>门店搜索：</label>
+                    <input type="text" id="storeSearch" placeholder="输入门店ID或名称">
+                </div>
+
+                <div class="filter-group">
+                    <label>排序方式：</label>
+                    <select id="sortByFilter">
+                        <option value="participation_rate">活动参与度</option>
+                        <option value="order_count">订单量</option>
+                        <option value="benefit_card_sales">权益卡销量</option>
+                        <option value="promo_package_sales">活动套餐销量</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>排序顺序：</label>
+                    <select id="sortOrderFilter">
+                        <option value="desc">降序</option>
+                        <option value="asc">升序</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="searchStores()">查询</button>
+                <button class="btn btn-secondary" onclick="exportData()">导出</button>
+            </div>
+        </div>
+
+        <!-- 数据时间提示 -->
+        <div id="dataTimeInfo" class="data-time-info" style="display: none;">
+            <span>数据日期：<strong id="dataDate"></strong></span>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="summary-stats">
+            <div class="stat-item">
+                <div class="stat-number" id="totalStores">0</div>
+                <div class="stat-label">门店总数</div>
+            </div>
+        </div>
+
+        <!-- 门店列表 -->
+        <div id="storeListContainer" class="store-list">
+            <!-- 动态加载 -->
+        </div>
+
+        <!-- 分页 -->
+        <div id="pagination" class="pagination">
+            <!-- 动态加载 -->
+        </div>
+
+        <!-- 加载提示 -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='promoratio.js') }}?v={{ range(1, 10000) | random }}"></script>
+</body>
+</html>
