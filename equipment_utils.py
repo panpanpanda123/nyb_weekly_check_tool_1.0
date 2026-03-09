@@ -50,7 +50,39 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
     if equipment_type != 'POS':
         return False, None, {}
     
-    # 计算各个时间窗口的异常次数
+    # 规则1: 当天上午有异常+处理过+下午又异常 = 立即标记
+    today = date.today()
+    
+    # 检查今天上午是否有异常
+    am_abnormal = session.query(EquipmentStatusSnapshot)\
+        .filter(EquipmentStatusSnapshot.store_id == store_id)\
+        .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
+        .filter(EquipmentStatusSnapshot.snapshot_date == today)\
+        .filter(EquipmentStatusSnapshot.snapshot_period == 'AM')\
+        .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
+        .first()
+    
+    # 检查今天下午是否有异常
+    pm_abnormal = session.query(EquipmentStatusSnapshot)\
+        .filter(EquipmentStatusSnapshot.store_id == store_id)\
+        .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
+        .filter(EquipmentStatusSnapshot.snapshot_date == today)\
+        .filter(EquipmentStatusSnapshot.snapshot_period == 'PM')\
+        .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
+        .first()
+    
+    # 检查今天是否处理过
+    today_processing = session.query(EquipmentProcessing)\
+        .filter(EquipmentProcessing.store_id == store_id)\
+        .filter(EquipmentProcessing.equipment_type == equipment_type)\
+        .filter(EquipmentProcessing.processed_at >= datetime.combine(today, datetime.min.time()))\
+        .first()
+    
+    if am_abnormal and pm_abnormal and today_processing:
+        # 上午有问题 + 处理过 + 下午又有问题 = 立即标记
+        return True, "当天反复", {'today_repeat': 1}
+    
+    # 规则2: 计算各个时间窗口的异常次数
     abnormal_counts = {}
     for rule in CHRONIC_RULES:
         days = rule['days']
