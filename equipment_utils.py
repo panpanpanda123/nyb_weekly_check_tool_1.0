@@ -51,7 +51,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         
     Returns:
         tuple: (是否经常出问题, 触发原因描述, 异常次数字典)
-        例如: (True, "多次出问题（当天反复）", {'5days': 3, '10days': 4, 'today_repeat': 1})
+        例如: (True, "多次出问题（当天反复）", {'5days': 3, '10days': 4, 'today_repeat': 1, 'unprocessed_dates': ['03-09']})
     """
     # 只对POS启用历史追踪
     if equipment_type != 'POS':
@@ -82,18 +82,23 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
     
-    # 检查今天是否有"已恢复"的处理记录
-    # 关键：必须是"已恢复"，不是"未恢复"
-    recovered_processing = session.query(EquipmentProcessing)\
+    # 检查今天是否有处理记录
+    today_processing = session.query(EquipmentProcessing)\
         .filter(EquipmentProcessing.store_id == store_id)\
         .filter(EquipmentProcessing.equipment_type == equipment_type)\
         .filter(EquipmentProcessing.processed_at >= today_start)\
-        .filter(EquipmentProcessing.action == '已恢复')\
         .first()
     
-    # 触发条件：上午有异常 + 标记已恢复 + 下午又有异常
-    if am_abnormal and pm_abnormal and recovered_processing:
+    # 情况1：上午有异常 + 标记"已恢复" + 下午又有异常 = 当天反复
+    if am_abnormal and pm_abnormal and today_processing and today_processing.action == '已恢复':
         return True, "多次出问题（当天反复）", {'today_repeat': 1}
+    
+    # 情况2：上午有异常 + 下午有异常 + 没有处理 = 未处理
+    # 注意：只有当下午快照存在时才判定（说明已经到下午了）
+    unprocessed_dates = []
+    if am_abnormal and pm_abnormal and not today_processing:
+        unprocessed_dates.append(today.strftime('%m-%d'))
+        return True, "多次出问题（未及时处理）", {'unprocessed': 1, 'unprocessed_dates': unprocessed_dates}
     
     # 规则2: 计算各个时间窗口的异常次数（排除今天，避免第一天就触发）
     abnormal_counts = {}

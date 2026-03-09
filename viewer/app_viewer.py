@@ -1393,6 +1393,7 @@ def export_equipment():
             count_5days = 0
             count_10days = 0
             abnormal_times = ''
+            counts = {}  # 保存完整的统计信息
             
             if equipment.equipment_type == 'POS':
                 is_chronic, chronic_reason, counts = is_chronic_store(
@@ -1441,6 +1442,7 @@ def export_equipment():
                 '最近5天异常次数': count_5days if equipment.equipment_type == 'POS' else '',
                 '最近10天异常次数': count_10days if equipment.equipment_type == 'POS' else '',
                 '异常时间点': abnormal_times,
+                '未处理日期': '、'.join(counts.get('unprocessed_dates', [])) if equipment.equipment_type == 'POS' else '',
                 '处理动作': processing.action if processing else '未处理',
                 '未恢复原因': processing.reason if processing else '',
                 '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else '',
@@ -1470,10 +1472,11 @@ def export_equipment():
             worksheet.column_dimensions['K'].width = 15  # 最近5天异常次数
             worksheet.column_dimensions['L'].width = 15  # 最近10天异常次数
             worksheet.column_dimensions['M'].width = 30  # 异常时间点
-            worksheet.column_dimensions['N'].width = 12  # 处理动作
-            worksheet.column_dimensions['O'].width = 30  # 未恢复原因
-            worksheet.column_dimensions['P'].width = 20  # 处理时间
-            worksheet.column_dimensions['Q'].width = 15  # 预计恢复日期
+            worksheet.column_dimensions['N'].width = 15  # 未处理日期
+            worksheet.column_dimensions['O'].width = 12  # 处理动作
+            worksheet.column_dimensions['P'].width = 30  # 未恢复原因
+            worksheet.column_dimensions['Q'].width = 20  # 处理时间
+            worksheet.column_dimensions['R'].width = 15  # 预计恢复日期
         
         output.seek(0)
         
