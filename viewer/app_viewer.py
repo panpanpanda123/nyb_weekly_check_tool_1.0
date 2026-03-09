@@ -1332,9 +1332,11 @@ def process_equipment():
 
 @app.route('/api/equipment/export')
 def export_equipment():
-    """导出设备异常处理结果"""
+    """导出设备异常处理结果（含经常出问题统计）"""
     try:
-        from shared.database_models import EquipmentStatus, EquipmentProcessing
+        from shared.database_models import EquipmentStatus, EquipmentProcessing, EquipmentStatusSnapshot
+        from equipment_utils import is_chronic_store
+        from datetime import date, timedelta
         import pandas as pd
         from io import BytesIO
         from flask import send_file
@@ -1351,11 +1353,54 @@ def export_equipment():
             key = f"{p.store_id}_{p.equipment_type}"
             processing_dict[key] = p
         
+        # 获取所有门店的快照历史（用于显示异常时间点）
+        cutoff_date = date.today() - timedelta(days=10)
+        snapshots = session.query(EquipmentStatusSnapshot)\
+            .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff_date)\
+            .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
+            .order_by(EquipmentStatusSnapshot.snapshot_date.desc())\
+            .all()
+        
+        # 按门店ID组织快照
+        snapshot_dict = {}
+        for snapshot in snapshots:
+            key = f"{snapshot.store_id}_{snapshot.equipment_type}"
+            if key not in snapshot_dict:
+                snapshot_dict[key] = []
+            snapshot_dict[key].append(snapshot)
+        
         # 准备导出数据
         export_data = []
         for equipment in equipment_list:
             key = f"{equipment.store_id}_{equipment.equipment_type}"
             processing = processing_dict.get(key)
+            
+            # 计算经常出问题统计（仅POS）
+            is_chronic = False
+            chronic_reason = ''
+            count_5days = 0
+            count_10days = 0
+            abnormal_times = ''
+            
+            if equipment.equipment_type == 'POS':
+                is_chronic, chronic_reason, counts = is_chronic_store(
+                    session, 
+                    equipment.store_id, 
+                    equipment.equipment_type
+                )
+                count_5days = counts.get('5days', 0)
+                count_10days = counts.get('10days', 0)
+                
+                # 获取异常时间点列表（最近5次）
+                store_snapshots = snapshot_dict.get(key, [])
+                if store_snapshots:
+                    time_list = []
+                    for snap in store_snapshots[:5]:  # 只显示最近5次
+                        time_str = snap.snapshot_date.strftime('%m-%d')
+                        period = '上午' if snap.snapshot_period == 'AM' else '下午'
+                        time_list.append(f"{time_str}{period}")
+                    abnormal_times = '、'.join(time_list)
+            
             export_data.append({
                 '门店ID': equipment.store_id,
                 '门店名称': equipment.store_name,
@@ -1364,10 +1409,16 @@ def export_equipment():
                 '设备类型': equipment.equipment_type,
                 '设备编号': equipment.equipment_id,
                 '设备名称': equipment.equipment_name,
-                '设备状态': equipment.status,
-                '处理动作': processing.action if processing else '',
+                '当前状态': equipment.status,
+                '是否经常出问题': '是' if is_chronic else '否',
+                '触发原因': chronic_reason or '',
+                '最近5天异常次数': count_5days if equipment.equipment_type == 'POS' else '',
+                '最近10天异常次数': count_10days if equipment.equipment_type == 'POS' else '',
+                '异常时间点': abnormal_times,
+                '处理动作': processing.action if processing else '未处理',
                 '未恢复原因': processing.reason if processing else '',
-                '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else ''
+                '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else '',
+                '预计恢复日期': processing.expected_recovery_date.strftime('%Y-%m-%d') if processing and processing.expected_recovery_date else ''
             })
         
         # 创建DataFrame
@@ -1377,6 +1428,27 @@ def export_equipment():
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='设备异常处理结果')
+            
+            # 获取工作表并设置列宽
+            worksheet = writer.sheets['设备异常处理结果']
+            worksheet.column_dimensions['A'].width = 12  # 门店ID
+            worksheet.column_dimensions['B'].width = 25  # 门店名称
+            worksheet.column_dimensions['C'].width = 10  # 战区
+            worksheet.column_dimensions['D'].width = 12  # 区域经理
+            worksheet.column_dimensions['E'].width = 12  # 设备类型
+            worksheet.column_dimensions['F'].width = 20  # 设备编号
+            worksheet.column_dimensions['G'].width = 20  # 设备名称
+            worksheet.column_dimensions['H'].width = 10  # 当前状态
+            worksheet.column_dimensions['I'].width = 15  # 是否经常出问题
+            worksheet.column_dimensions['J'].width = 12  # 触发原因
+            worksheet.column_dimensions['K'].width = 15  # 最近5天异常次数
+            worksheet.column_dimensions['L'].width = 15  # 最近10天异常次数
+            worksheet.column_dimensions['M'].width = 30  # 异常时间点
+            worksheet.column_dimensions['N'].width = 12  # 处理动作
+            worksheet.column_dimensions['O'].width = 30  # 未恢复原因
+            worksheet.column_dimensions['P'].width = 20  # 处理时间
+            worksheet.column_dimensions['Q'].width = 15  # 预计恢复日期
+        
         output.seek(0)
         
         # 生成文件名
@@ -1390,6 +1462,8 @@ def export_equipment():
         )
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': f'导出失败: {str(e)}'
