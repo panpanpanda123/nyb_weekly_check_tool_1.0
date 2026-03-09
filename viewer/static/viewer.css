@@ -1713,8 +1713,14 @@ h1 {
 
 .summary-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .summary-stats {
+        grid-template-columns: 1fr;
+    }
 }
 
 .stat-item {
@@ -1857,6 +1863,18 @@ h1 {
 }
 
 /* 列表模式门店卡片 */
+#storeListContainer {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    #storeListContainer {
+        grid-template-columns: 1fr;
+    }
+}
+
 .store-list-item {
     background: white;
     border-radius: 8px;
