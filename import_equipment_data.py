@@ -430,7 +430,7 @@ if import_pos and pos_file and not args.clear_pos:
             cutoff_date = date.today() - timedelta(days=SNAPSHOT_RETENTION_DAYS)
             deleted_count = session.query(EquipmentStatusSnapshot)\
                 .filter(EquipmentStatusSnapshot.snapshot_date < cutoff_date)\
-                .delete()
+                .delete(synchronize_session=False)
             
             if deleted_count > 0:
                 session.commit()
@@ -438,10 +438,10 @@ if import_pos and pos_file and not args.clear_pos:
         
         # 清理旧处理记录
         from shared.database_models import EquipmentProcessing
-        processing_cutoff_date = date.today() - timedelta(days=PROCESSING_RETENTION_DAYS)
+        processing_cutoff_datetime = datetime.now() - timedelta(days=PROCESSING_RETENTION_DAYS)
         deleted_processing = session.query(EquipmentProcessing)\
-            .filter(EquipmentProcessing.processed_at < processing_cutoff_date)\
-            .delete()
+            .filter(EquipmentProcessing.processed_at < processing_cutoff_datetime)\
+            .delete(synchronize_session=False)
         
         if deleted_processing > 0:
             session.commit()
