@@ -11,6 +11,7 @@ let filters = {
     store_search: ''
 };
 let displayMode = 'card'; // 'card' 或 'list'
+let listFilterStatus = 'all'; // 'all', 'pending', 'recovered', 'not_recovered' - 列表模式的筛选状态
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -212,6 +213,7 @@ function setupEventListeners() {
             store_search: ''
         };
         currentPage = 1;
+        listFilterStatus = 'all'; // 重置列表筛选状态
         
         // 恢复显示所有区域经理
         const datalist = document.getElementById('regionalManagerList');
@@ -433,33 +435,57 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
     const recoveredStores = totalRecovered !== undefined ? totalRecovered : 0;
     const notRecoveredStores = totalNotRecovered !== undefined ? totalNotRecovered : 0;
     
+    // 根据筛选状态过滤门店列表
+    let filteredStores = stores;
+    if (listFilterStatus === 'pending') {
+        filteredStores = stores.filter(s => !s.processing_pos && !s.processing_stb);
+    } else if (listFilterStatus === 'recovered') {
+        filteredStores = stores.filter(s => {
+            const hasProcessing = s.processing_pos || s.processing_stb;
+            if (!hasProcessing) return false;
+            const posRecovered = !s.processing_pos || s.processing_pos.action === '已恢复';
+            const stbRecovered = !s.processing_stb || s.processing_stb.action === '已恢复';
+            return posRecovered && stbRecovered;
+        });
+    } else if (listFilterStatus === 'not_recovered') {
+        filteredStores = stores.filter(s => {
+            const posNotRecovered = s.processing_pos && s.processing_pos.action === '未恢复';
+            const stbNotRecovered = s.processing_stb && s.processing_stb.action === '未恢复';
+            return posNotRecovered || stbNotRecovered;
+        });
+    }
+    
     let html = `
         <div class="list-mode-container">
             <div class="summary-section">
-                <div class="summary-title">📊 处理进度概览</div>
+                <div class="summary-title">
+                    📊 处理进度概览
+                    ${listFilterStatus !== 'all' ? '<button class="clear-filter-btn" onclick="clearListFilter()">✕ 清除筛选</button>' : ''}
+                </div>
                 <div class="summary-stats">
-                    <div class="stat-item">
+                    <div class="stat-item clickable ${listFilterStatus === 'all' ? 'active' : ''}" onclick="filterListByStatus('all')">
                         <div class="stat-number">${totalStores}</div>
                         <div class="stat-label">异常门店总数</div>
                     </div>
-                    <div class="stat-item pending">
+                    <div class="stat-item pending clickable ${listFilterStatus === 'pending' ? 'active' : ''}" onclick="filterListByStatus('pending')">
                         <div class="stat-number">${pendingStores}</div>
                         <div class="stat-label">待处理门店</div>
                     </div>
-                    <div class="stat-item completed">
+                    <div class="stat-item completed clickable ${listFilterStatus === 'recovered' || listFilterStatus === 'not_recovered' ? 'active' : ''}">
                         <div class="stat-number">${completedStores}</div>
                         <div class="stat-label">已处理门店</div>
                         <div class="stat-detail">
-                            <span class="detail-item recovered">✓ 已恢复: ${recoveredStores}</span>
-                            <span class="detail-item not-recovered">⚠ 未恢复: ${notRecoveredStores}</span>
+                            <span class="detail-item recovered clickable ${listFilterStatus === 'recovered' ? 'active' : ''}" onclick="event.stopPropagation(); filterListByStatus('recovered')">✓ 已恢复: ${recoveredStores}</span>
+                            <span class="detail-item not-recovered clickable ${listFilterStatus === 'not_recovered' ? 'active' : ''}" onclick="event.stopPropagation(); filterListByStatus('not_recovered')">⚠ 未恢复: ${notRecoveredStores}</span>
                         </div>
                     </div>
                 </div>
+                ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (${filteredStores.length}家门店)</div>` : ''}
             </div>
     `;
     
     // 渲染门店列表
-    stores.forEach(store => {
+    filteredStores.forEach(store => {
         const posEquipment = store.equipment.filter(eq => eq.equipment_type === 'POS');
         const stbEquipment = store.equipment.filter(eq => eq.equipment_type === '机顶盒');
         const isPending = !store.processing_pos && !store.processing_stb;
@@ -713,4 +739,26 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.className = 'toast';
     }, 3000);
+}
+
+// 列表模式筛选功能
+function filterListByStatus(status) {
+    listFilterStatus = status;
+    // 重新搜索以刷新列表
+    searchEquipment();
+}
+
+function clearListFilter() {
+    listFilterStatus = 'all';
+    searchEquipment();
+}
+
+function getFilterStatusText() {
+    const statusMap = {
+        'all': '全部门店',
+        'pending': '待处理门店',
+        'recovered': '已恢复门店',
+        'not_recovered': '未恢复门店'
+    };
+    return statusMap[listFilterStatus] || '全部门店';
 }

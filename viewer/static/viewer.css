@@ -1723,6 +1723,25 @@ h1 {
     padding: 12px;
     border-radius: 8px;
     text-align: center;
+    transition: all 0.3s;
+}
+
+.stat-item.clickable {
+    cursor: pointer;
+}
+
+.stat-item.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.stat-item.clickable:active {
+    transform: translateY(0);
+}
+
+.stat-item.active {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
 }
 
 .stat-item.pending {
@@ -1763,6 +1782,25 @@ h1 {
     align-items: center;
     justify-content: center;
     gap: 4px;
+    transition: all 0.2s;
+}
+
+.detail-item.clickable {
+    cursor: pointer;
+}
+
+.detail-item.clickable:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(1.05);
+}
+
+.detail-item.clickable:active {
+    transform: scale(0.98);
+}
+
+.detail-item.active {
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
 }
 
 .detail-item.recovered {
@@ -1771,6 +1809,51 @@ h1 {
 
 .detail-item.not-recovered {
     background: rgba(255, 193, 7, 0.3);
+}
+
+.summary-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #ecf0f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clear-filter-btn {
+    padding: 4px 12px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clear-filter-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+}
+
+.clear-filter-btn:active {
+    transform: translateY(0);
+}
+
+.filter-hint {
+    background: #fff3cd;
+    color: #856404;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 10px;
+    text-align: center;
+    border-left: 4px solid #ffc107;
 }
 
 /* 列表模式门店卡片 */
@@ -2298,6 +2381,10 @@ h1 {
         padding: 10px;
     }
     
+    .stat-item.active {
+        transform: scale(1.02);
+    }
+    
     .stat-number {
         font-size: 20px;
     }
@@ -2317,6 +2404,25 @@ h1 {
         flex: 1;
         font-size: 10px;
         padding: 2px 4px;
+    }
+    
+    .summary-title {
+        font-size: 14px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .clear-filter-btn {
+        width: 100%;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    .filter-hint {
+        font-size: 12px;
+        padding: 6px 10px;
+        margin-top: 8px;
     }
     
     .store-list-item {
