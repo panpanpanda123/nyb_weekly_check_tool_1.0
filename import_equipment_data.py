@@ -395,8 +395,12 @@ if import_pos and pos_file and not args.clear_pos:
         print(f"   时段: {snapshot_period} ({'上午' if snapshot_period == 'AM' else '下午'})")
         
         # 检查今天这个时段是否已经创建过快照
+        # 使用日期范围查询，避免datetime和date类型不匹配
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        today_end = datetime.combine(date.today(), datetime.max.time())
         existing_snapshot = session.query(EquipmentStatusSnapshot)\
-            .filter(EquipmentStatusSnapshot.snapshot_date == date.today())\
+            .filter(EquipmentStatusSnapshot.snapshot_date >= today_start)\
+            .filter(EquipmentStatusSnapshot.snapshot_date <= today_end)\
             .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)\
             .first()
         

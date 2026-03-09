@@ -52,21 +52,25 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
     
     # 规则1: 当天上午有异常+处理过+下午又异常 = 立即标记
     today = date.today()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
     
-    # 检查今天上午是否有异常
+    # 检查今天上午是否有异常（使用日期范围查询）
     am_abnormal = session.query(EquipmentStatusSnapshot)\
         .filter(EquipmentStatusSnapshot.store_id == store_id)\
         .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
-        .filter(EquipmentStatusSnapshot.snapshot_date == today)\
+        .filter(EquipmentStatusSnapshot.snapshot_date >= today_start)\
+        .filter(EquipmentStatusSnapshot.snapshot_date <= today_end)\
         .filter(EquipmentStatusSnapshot.snapshot_period == 'AM')\
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
     
-    # 检查今天下午是否有异常
+    # 检查今天下午是否有异常（使用日期范围查询）
     pm_abnormal = session.query(EquipmentStatusSnapshot)\
         .filter(EquipmentStatusSnapshot.store_id == store_id)\
         .filter(EquipmentStatusSnapshot.equipment_type == equipment_type)\
-        .filter(EquipmentStatusSnapshot.snapshot_date == today)\
+        .filter(EquipmentStatusSnapshot.snapshot_date >= today_start)\
+        .filter(EquipmentStatusSnapshot.snapshot_date <= today_end)\
         .filter(EquipmentStatusSnapshot.snapshot_period == 'PM')\
         .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
         .first()
@@ -75,7 +79,7 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
     today_processing = session.query(EquipmentProcessing)\
         .filter(EquipmentProcessing.store_id == store_id)\
         .filter(EquipmentProcessing.equipment_type == equipment_type)\
-        .filter(EquipmentProcessing.processed_at >= datetime.combine(today, datetime.min.time()))\
+        .filter(EquipmentProcessing.processed_at >= today_start)\
         .first()
     
     if am_abnormal and pm_abnormal and today_processing:
