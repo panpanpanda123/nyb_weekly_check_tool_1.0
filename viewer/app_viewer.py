@@ -1347,7 +1347,7 @@ def export_equipment():
     """导出设备异常处理结果（含经常出问题统计）"""
     try:
         from shared.database_models import EquipmentStatus, EquipmentProcessing, EquipmentStatusSnapshot
-        from equipment_utils import is_chronic_store
+        from equipment_utils import is_chronic_store, get_abnormal_count
         from datetime import date, timedelta
         import pandas as pd
         from io import BytesIO
@@ -1400,17 +1400,31 @@ def export_equipment():
                     equipment.store_id, 
                     equipment.equipment_type
                 )
-                count_5days = counts.get('5days', 0)
-                count_10days = counts.get('10days', 0)
+                # 导出时显示包含今天的异常次数（用于统计处罚）
+                # 注意：判定"经常出问题"时排除今天，但导出统计时包含今天
+                count_5days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 5, exclude_today=False)
+                count_10days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 10, exclude_today=False)
                 
-                # 获取异常时间点列表（最近5次）
+                # 获取异常时间点列表（最近5次，去重）
                 store_snapshots = snapshot_dict.get(key, [])
                 if store_snapshots:
                     time_list = []
-                    for snap in store_snapshots[:5]:  # 只显示最近5次
+                    seen_times = set()  # 用于去重
+                    for snap in store_snapshots:
                         time_str = snap.snapshot_date.strftime('%m-%d')
-                        period = '上午' if snap.snapshot_period == 'AM' else '下午'
-                        time_list.append(f"{time_str}{period}")
+                        period = snap.snapshot_period
+                        time_key = f"{time_str}_{period}"  # 用于去重的key
+                        
+                        # 去重：同一天同一时段只显示一次
+                        if time_key not in seen_times:
+                            seen_times.add(time_key)
+                            period_text = '上午' if period == 'AM' else '下午'
+                            time_list.append(f"{time_str}{period_text}")
+                            
+                            # 只显示最近5次
+                            if len(time_list) >= 5:
+                                break
+                    
                     abnormal_times = '、'.join(time_list)
             
             export_data.append({
