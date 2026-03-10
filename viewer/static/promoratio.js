@@ -260,17 +260,25 @@ function setupEventListeners() {
     
     // 上一页
     document.getElementById('prevPage').addEventListener('click', () => {
+        console.log('上一页按钮被点击，当前页:', currentPage, '总页数:', totalPages);
         if (currentPage > 1) {
             currentPage--;
+            console.log('跳转到第', currentPage, '页');
             searchStores();
+        } else {
+            console.log('已经是第一页了');
         }
     });
     
     // 下一页
     document.getElementById('nextPage').addEventListener('click', () => {
+        console.log('下一页按钮被点击，当前页:', currentPage, '总页数:', totalPages);
         if (currentPage < totalPages) {
             currentPage++;
+            console.log('跳转到第', currentPage, '页');
             searchStores();
+        } else {
+            console.log('已经是最后一页了');
         }
     });
 }
@@ -278,6 +286,7 @@ function setupEventListeners() {
 // 搜索门店
 async function searchStores(page = 1) {
     currentPage = page;
+    console.log('🔍 searchStores 被调用，page参数:', page, '当前页:', currentPage);
     
     try {
         showLoading();
@@ -289,12 +298,18 @@ async function searchStores(page = 1) {
             ...filters
         });
         
+        console.log('📤 发送请求，参数:', Object.fromEntries(params));
+        
         const response = await fetch(`${API_BASE_PATH}/api/promo/search?${params}`);
         const result = await response.json();
+        
+        console.log('📥 收到响应:', result);
         
         if (result.success) {
             const data = result.data;
             totalPages = data.total_pages;
+            
+            console.log('✅ 数据加载成功，当前页:', data.page, '总页数:', totalPages, '总数:', data.total);
             
             // 更新统计信息
             document.getElementById('resultCount').textContent = `门店总数: ${data.total}`;
@@ -305,8 +320,14 @@ async function searchStores(page = 1) {
             // 更新分页
             if (data.total > 0) {
                 document.getElementById('paginationContainer').style.display = 'flex';
-                document.getElementById('prevPage').disabled = currentPage === 1;
-                document.getElementById('nextPage').disabled = currentPage >= totalPages;
+                const prevBtn = document.getElementById('prevPage');
+                const nextBtn = document.getElementById('nextPage');
+                
+                prevBtn.disabled = currentPage === 1;
+                nextBtn.disabled = currentPage >= totalPages;
+                
+                console.log('🔘 分页按钮状态 - 上一页:', prevBtn.disabled ? '禁用' : '启用', '下一页:', nextBtn.disabled ? '禁用' : '启用');
+                
                 document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
             } else {
                 document.getElementById('paginationContainer').style.display = 'none';
@@ -316,7 +337,7 @@ async function searchStores(page = 1) {
             throw new Error(result.error || '搜索失败');
         }
     } catch (error) {
-        console.error('搜索失败:', error);
+        console.error('❌ 搜索失败:', error);
         showError('搜索失败，请重试');
     }
 }
