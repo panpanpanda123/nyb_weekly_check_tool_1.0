@@ -284,8 +284,11 @@ function setupEventListeners() {
 }
 
 // 搜索门店
-async function searchStores(page = 1) {
-    currentPage = page;
+async function searchStores(page) {
+    // 如果传入了page参数，使用传入的值；否则使用当前的currentPage
+    if (page !== undefined) {
+        currentPage = page;
+    }
     console.log('🔍 searchStores 被调用，page参数:', page, '当前页:', currentPage);
     
     try {
