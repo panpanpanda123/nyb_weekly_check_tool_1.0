@@ -194,7 +194,15 @@ def import_promo_data():
                 promo_package_sales = int(row.iloc[9]) if pd.notna(row.iloc[9]) and str(row.iloc[9]).replace('.', '').isdigit() else 0
                 
                 # K列：活动参与度
-                participation_rate = str(row.iloc[10]).strip() if pd.notna(row.iloc[10]) else '0%'
+                # 如果订单数为0，参与度直接设为0
+                if order_count == 0:
+                    participation_rate = '0'
+                else:
+                    # 尝试读取参与度值
+                    if pd.notna(row.iloc[10]):
+                        participation_rate = str(row.iloc[10]).strip()
+                    else:
+                        participation_rate = '0'
                 
                 # 创建记录
                 record = PromoParticipation(
