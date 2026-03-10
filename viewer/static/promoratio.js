@@ -306,7 +306,7 @@ async function searchStores(page = 1) {
             if (data.total > 0) {
                 document.getElementById('paginationContainer').style.display = 'flex';
                 document.getElementById('prevPage').disabled = currentPage === 1;
-                document.getElementById('nextPage').disabled = !data.has_more;
+                document.getElementById('nextPage').disabled = currentPage >= totalPages;
                 document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
             } else {
                 document.getElementById('paginationContainer').style.display = 'none';
