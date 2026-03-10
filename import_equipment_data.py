@@ -429,6 +429,47 @@ if import_pos and pos_file and not args.clear_pos:
             session.commit()
             print(f"   ✅ 创建 {snapshot_count} 条快照记录")
         
+        # ========== 关键修复：清空当前时段的处理记录 ==========
+        # 每次导入新数据 = 新一轮，处理状态应该重置
+        # 但保留上午的处理记录（用于判定"当天反复"）
+        from shared.database_models import EquipmentProcessing
+        
+        if snapshot_period == 'AM':
+            # 上午导入：清空所有今天之前的处理记录（昨天的已经没用了）
+            # 同时清空今天上午之前可能残留的处理记录
+            deleted_current = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
+                .delete(synchronize_session=False)
+            session.commit()
+            if deleted_current > 0:
+                print(f"   🔄 清空今天的处理记录: {deleted_current} 条（上午新一轮）")
+            else:
+                print(f"   ✅ 今天没有需要清空的处理记录")
+        else:
+            # 下午导入：清空今天下午的处理记录（如果有的话）
+            # 保留上午的处理记录（用于判定"当天反复"）
+            pm_start = datetime.combine(date.today(), datetime.min.time().replace(hour=AM_PM_BOUNDARY_HOUR))
+            deleted_pm = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= pm_start)\
+                .delete(synchronize_session=False)
+            session.commit()
+            if deleted_pm > 0:
+                print(f"   🔄 清空今天下午的处理记录: {deleted_pm} 条（下午新一轮）")
+            
+            # 统计上午保留的处理记录（用于判定"当天反复"）
+            am_records = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
+                .filter(EquipmentProcessing.processed_at < pm_start)\
+                .count()
+            if am_records > 0:
+                recovered_am = session.query(EquipmentProcessing)\
+                    .filter(EquipmentProcessing.processed_at >= today_start)\
+                    .filter(EquipmentProcessing.processed_at < pm_start)\
+                    .filter(EquipmentProcessing.action == '已恢复')\
+                    .count()
+                print(f"   📋 保留上午处理记录: {am_records} 条（其中已恢复: {recovered_am} 条，用于判定当天反复）")
+        # ========== 清空处理记录结束 ==========
+        
         # 清理旧快照
         if AUTO_CLEANUP_OLD_SNAPSHOTS:
             cutoff_date = date.today() - timedelta(days=SNAPSHOT_RETENTION_DAYS)
@@ -440,8 +481,7 @@ if import_pos and pos_file and not args.clear_pos:
                 session.commit()
                 print(f"   🗑️  清理 {deleted_count} 条过期快照（保留最近{SNAPSHOT_RETENTION_DAYS}天）")
         
-        # 清理旧处理记录
-        from shared.database_models import EquipmentProcessing
+        # 清理旧处理记录（超过保留天数的）
         processing_cutoff_datetime = datetime.now() - timedelta(days=PROCESSING_RETENTION_DAYS)
         deleted_processing = session.query(EquipmentProcessing)\
             .filter(EquipmentProcessing.processed_at < processing_cutoff_datetime)\
