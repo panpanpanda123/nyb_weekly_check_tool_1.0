@@ -379,11 +379,10 @@ class PromoParticipation(Base):
     """活动参与度模型"""
     __tablename__ = 'promo_participation'
     
-    # 主键
-    id = Column(Integer, primary_key=True, autoincrement=True, comment='自增主键')
+    # 主键 - 使用门店ID作为主键，确保每个门店只有一条记录
+    store_id = Column(String(50), primary_key=True, comment='门店ID')
     
     # 门店信息
-    store_id = Column(String(50), nullable=False, comment='门店ID')
     store_name = Column(String(255), comment='门店名称')
     war_zone = Column(String(50), comment='战区')
     regional_manager = Column(String(50), comment='区域经理')
@@ -399,7 +398,6 @@ class PromoParticipation(Base):
     import_time = Column(DateTime, default=datetime.now, comment='导入时间')
     
     __table_args__ = (
-        Index('idx_promo_store_id', 'store_id'),
         Index('idx_promo_war_zone', 'war_zone'),
         Index('idx_promo_regional_manager', 'regional_manager'),
         Index('idx_promo_data_date', 'data_date'),
@@ -409,7 +407,6 @@ class PromoParticipation(Base):
     def to_dict(self):
         """转换为字典"""
         return {
-            'id': self.id,
             'store_id': self.store_id,
             'store_name': self.store_name,
             'war_zone': self.war_zone,

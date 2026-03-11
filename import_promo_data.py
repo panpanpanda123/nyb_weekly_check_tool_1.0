@@ -153,12 +153,10 @@ def import_promo_data():
             }
         print(f"✓ 加载白名单: {len(whitelist_dict)} 个门店")
         
-        # 6. 清空旧数据（同一日期的）
-        deleted = session.query(PromoParticipation)\
-            .filter(PromoParticipation.data_date == data_date)\
-            .delete(synchronize_session=False)
+        # 6. 清空所有旧数据（以最新上传的文件为准）
+        deleted = session.query(PromoParticipation).delete(synchronize_session=False)
         session.commit()
-        print(f"✓ 清空旧数据: {deleted} 条")
+        print(f"✓ 清空所有旧数据: {deleted} 条")
         
         # 7. 导入新数据
         imported_count = 0
