@@ -25,6 +25,7 @@ from shared.database_models import (
 from viewer.api_review import register_review_routes
 from viewer.api_rating import register_rating_routes
 from viewer.api_equipment import register_equipment_routes
+from viewer.api_equipment_history import register_equipment_history_routes
 from viewer.api_promo import register_promo_routes
 from viewer.api_upload import register_upload_routes
 
@@ -113,6 +114,9 @@ register_rating_routes(app, get_db_session)
 
 # 注册设备异常监控API
 register_equipment_routes(app, get_db_session)
+
+# 注册设备异常历史记录API
+register_equipment_history_routes(app, get_db_session)
 
 # 注册活动参与度API
 register_promo_routes(app, get_db_session)

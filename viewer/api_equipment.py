@@ -359,18 +359,38 @@ def register_equipment_routes(app, get_db_session):
 
     @app.route('/api/equipment/export')
     def export_equipment():
-        """导出设备异常处理结果"""
+        """导出设备异常处理结果（包含近期处理记录）"""
         try:
             session = get_db_session()
             
+            # 获取查询天数参数（默认10天）
+            history_days = int(request.args.get('history_days', 10))
+            
             equipment_list = session.query(EquipmentStatus).all()
-            processing_list = session.query(EquipmentProcessing).all()
             
-            processing_dict = {}
-            for p in processing_list:
+            # 获取最新的处理记录（当前状态）
+            current_processing_list = session.query(EquipmentProcessing).all()
+            current_processing_dict = {}
+            for p in current_processing_list:
                 key = f"{p.store_id}_{p.equipment_type}"
-                processing_dict[key] = p
+                current_processing_dict[key] = p
             
+            # 获取近期所有处理记录（用于统计处理次数）
+            history_cutoff = datetime.now() - timedelta(days=history_days)
+            all_processing_records = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= history_cutoff)\
+                .order_by(EquipmentProcessing.processed_at.desc())\
+                .all()
+            
+            # 按门店和设备类型分组处理记录
+            processing_history_dict = {}
+            for p in all_processing_records:
+                key = f"{p.store_id}_{p.equipment_type}"
+                if key not in processing_history_dict:
+                    processing_history_dict[key] = []
+                processing_history_dict[key].append(p)
+            
+            # 获取快照数据
             cutoff_date = date.today() - timedelta(days=10)
             snapshots = session.query(EquipmentStatusSnapshot)\
                 .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff_date)\
@@ -385,10 +405,22 @@ def register_equipment_routes(app, get_db_session):
                     snapshot_dict[key] = []
                 snapshot_dict[key].append(snapshot)
             
+            # 检查是否在预计恢复期内被跳过
+            def check_suppressed_status(store_id, equipment_type):
+                """检查门店是否在预计恢复期内被跳过"""
+                from equipment_utils import should_suppress
+                is_suppressed = should_suppress(session, store_id, equipment_type)
+                if is_suppressed:
+                    # 获取预计恢复日期
+                    proc = current_processing_dict.get(f"{store_id}_{equipment_type}")
+                    if proc and proc.expected_recovery_date:
+                        return f"是（预计{proc.expected_recovery_date.strftime('%m-%d')}恢复）"
+                return "否"
+            
             export_data = []
             for equipment in equipment_list:
                 key = f"{equipment.store_id}_{equipment.equipment_type}"
-                processing = processing_dict.get(key)
+                current_processing = current_processing_dict.get(key)
                 
                 is_chronic = False
                 chronic_reason = ''
@@ -425,6 +457,24 @@ def register_equipment_routes(app, get_db_session):
                         
                         abnormal_times = '、'.join(time_list)
                 
+                # 统计近期处理记录
+                history_records = processing_history_dict.get(key, [])
+                total_processing_count = len(history_records)
+                recovered_count = sum(1 for r in history_records if r.action == '已恢复')
+                not_recovered_count = sum(1 for r in history_records if r.action == '未恢复')
+                
+                # 生成处理记录详情（最近5条）
+                processing_details = []
+                for i, record in enumerate(history_records[:5]):
+                    detail = f"{record.processed_at.strftime('%m-%d %H:%M')} {record.action}"
+                    if record.reason:
+                        detail += f"({record.reason[:10]}...)" if len(record.reason) > 10 else f"({record.reason})"
+                    processing_details.append(detail)
+                processing_details_str = '；'.join(processing_details) if processing_details else ''
+                
+                # 检查是否被跳过
+                suppressed_status = check_suppressed_status(equipment.store_id, equipment.equipment_type)
+                
                 export_data.append({
                     '门店ID': equipment.store_id,
                     '门店名称': equipment.store_name,
@@ -440,10 +490,15 @@ def register_equipment_routes(app, get_db_session):
                     '最近10天异常次数': count_10days if equipment.equipment_type == 'POS' else '',
                     '异常时间点': abnormal_times,
                     '未处理日期': '、'.join(counts.get('unprocessed_dates', [])) if equipment.equipment_type == 'POS' else '',
-                    '处理动作': processing.action if processing else '未处理',
-                    '未恢复原因': processing.reason if processing else '',
-                    '处理时间': processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if processing and processing.processed_at else '',
-                    '预计恢复日期': processing.expected_recovery_date.strftime('%Y-%m-%d') if processing and processing.expected_recovery_date else ''
+                    f'近{history_days}天处理次数': total_processing_count,
+                    f'近{history_days}天已恢复次数': recovered_count,
+                    f'近{history_days}天未恢复次数': not_recovered_count,
+                    '最近处理记录': processing_details_str,
+                    '当前处理动作': current_processing.action if current_processing else '未处理',
+                    '未恢复原因': current_processing.reason if current_processing else '',
+                    '当前处理时间': current_processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if current_processing and current_processing.processed_at else '',
+                    '预计恢复日期': current_processing.expected_recovery_date.strftime('%Y-%m-%d') if current_processing and current_processing.expected_recovery_date else '',
+                    '预计恢复期内跳过': suppressed_status
                 })
             
             df = pd.DataFrame(export_data)
@@ -453,24 +508,30 @@ def register_equipment_routes(app, get_db_session):
                 df.to_excel(writer, index=False, sheet_name='设备异常处理结果')
                 
                 worksheet = writer.sheets['设备异常处理结果']
-                worksheet.column_dimensions['A'].width = 12
-                worksheet.column_dimensions['B'].width = 25
-                worksheet.column_dimensions['C'].width = 10
-                worksheet.column_dimensions['D'].width = 12
-                worksheet.column_dimensions['E'].width = 12
-                worksheet.column_dimensions['F'].width = 20
-                worksheet.column_dimensions['G'].width = 20
-                worksheet.column_dimensions['H'].width = 10
-                worksheet.column_dimensions['I'].width = 15
-                worksheet.column_dimensions['J'].width = 12
-                worksheet.column_dimensions['K'].width = 15
-                worksheet.column_dimensions['L'].width = 15
-                worksheet.column_dimensions['M'].width = 30
-                worksheet.column_dimensions['N'].width = 15
-                worksheet.column_dimensions['O'].width = 12
-                worksheet.column_dimensions['P'].width = 30
-                worksheet.column_dimensions['Q'].width = 20
-                worksheet.column_dimensions['R'].width = 15
+                # 设置列宽
+                worksheet.column_dimensions['A'].width = 12   # 门店ID
+                worksheet.column_dimensions['B'].width = 25   # 门店名称
+                worksheet.column_dimensions['C'].width = 10   # 战区
+                worksheet.column_dimensions['D'].width = 12   # 区域经理
+                worksheet.column_dimensions['E'].width = 12   # 设备类型
+                worksheet.column_dimensions['F'].width = 20   # 设备编号
+                worksheet.column_dimensions['G'].width = 20   # 设备名称
+                worksheet.column_dimensions['H'].width = 10   # 当前状态
+                worksheet.column_dimensions['I'].width = 15   # 是否经常出问题
+                worksheet.column_dimensions['J'].width = 20   # 触发原因
+                worksheet.column_dimensions['K'].width = 15   # 最近5天异常次数
+                worksheet.column_dimensions['L'].width = 15   # 最近10天异常次数
+                worksheet.column_dimensions['M'].width = 30   # 异常时间点
+                worksheet.column_dimensions['N'].width = 20   # 未处理日期
+                worksheet.column_dimensions['O'].width = 15   # 近X天处理次数
+                worksheet.column_dimensions['P'].width = 15   # 近X天已恢复次数
+                worksheet.column_dimensions['Q'].width = 15   # 近X天未恢复次数
+                worksheet.column_dimensions['R'].width = 50   # 最近处理记录
+                worksheet.column_dimensions['S'].width = 12   # 当前处理动作
+                worksheet.column_dimensions['T'].width = 30   # 未恢复原因
+                worksheet.column_dimensions['U'].width = 20   # 当前处理时间
+                worksheet.column_dimensions['V'].width = 15   # 预计恢复日期
+                worksheet.column_dimensions['W'].width = 20   # 预计恢复期内跳过
             
             output.seek(0)
             
