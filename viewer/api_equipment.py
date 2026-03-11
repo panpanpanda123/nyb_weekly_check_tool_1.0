@@ -153,25 +153,14 @@ def register_equipment_routes(app, get_db_session):
             all_store_ids = [sid for sid in all_store_ids if sid not in suppressed_store_ids]
             total_stores = len(all_store_ids)
             
-            # 获取处理记录 - 只看当前时段的处理记录
-            # 上午导入后：没有处理记录（都是未处理）
-            # 下午导入后：没有处理记录（下午的被清空了），上午的保留用于判定"当天反复"
-            from equipment_config import AM_PM_BOUNDARY_HOUR
-            current_hour = datetime.now().hour
-            current_period = 'AM' if current_hour < AM_PM_BOUNDARY_HOUR else 'PM'
-            
+            # 获取处理记录 - 查今天所有的处理记录
+            # 每次导入时 import_equipment_data.py 已经清空了当前时段的处理记录
+            # 所以数据库里存在的处理记录就是本轮有效的处理记录
             today_start = datetime.combine(date.today(), datetime.min.time())
-            
-            if current_period == 'AM':
-                # 上午：只看今天上午的处理记录
-                processing_filter_start = today_start
-            else:
-                # 下午：只看今天下午的处理记录（上午的保留但不算"已处理"）
-                processing_filter_start = datetime.combine(date.today(), datetime.min.time().replace(hour=AM_PM_BOUNDARY_HOUR))
             
             all_processing_records = session.query(EquipmentProcessing)\
                 .filter(EquipmentProcessing.store_id.in_(all_store_ids))\
-                .filter(EquipmentProcessing.processed_at >= processing_filter_start)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
                 .all()
             
             processed_store_ids = set()
@@ -227,7 +216,7 @@ def register_equipment_routes(app, get_db_session):
             
             processing_records = session.query(EquipmentProcessing)\
                 .filter(EquipmentProcessing.store_id.in_(store_ids))\
-                .filter(EquipmentProcessing.processed_at >= processing_filter_start)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
                 .all()
             processing_dict = {}
             for p in processing_records:
