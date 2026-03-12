@@ -346,7 +346,7 @@ function renderEquipmentList(stores) {
             <div class="store-card-horizontal ${store.is_chronic ? 'chronic-store' : ''}" data-store-id="${store.store_id}">
                 <!-- 左侧：门店信息 -->
                 <div class="store-info-section">
-                    <div class="store-name-compact">${store.store_name} ${chronicBadge}</div>
+                    <div class="store-name-compact">${store.store_name} <span class="store-id-tag">${store.store_id}</span> ${chronicBadge}</div>
                     <div class="store-meta-inline">
                         <span class="meta-item">${store.war_zone}</span>
                         <span class="meta-item">${store.regional_manager}</span>
@@ -493,7 +493,7 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
             <div class="store-list-item">
                 <div class="store-list-header">
                     <div class="store-list-info">
-                        <div class="store-list-name">${store.store_name}</div>
+                        <div class="store-list-name">${store.store_name} <span class="store-id-tag">${store.store_id}</span></div>
                         <div class="store-list-meta">${store.war_zone} · ${store.regional_manager} · ID: ${store.store_id}</div>
                     </div>
                     <div class="store-list-status">
