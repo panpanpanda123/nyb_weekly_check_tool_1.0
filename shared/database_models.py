@@ -248,6 +248,11 @@ class EquipmentStatus(Base):
     equipment_name = Column(String(255), comment='设备名称')
     status = Column(String(50), comment='设备状态')
     
+    # 营业时间（从在营门店文件J列读取）
+    business_hours = Column(Text, comment='营业时间原始字符串')
+    # 是否在数据时间点处于营业状态
+    is_open_at_data_time = Column(Integer, default=1, comment='数据时间点是否营业：1=营业中，0=未营业')
+    
     # 导入时间
     import_time = Column(DateTime, default=datetime.now, comment='导入时间')
     
@@ -271,6 +276,8 @@ class EquipmentStatus(Base):
             'equipment_id': self.equipment_id or '',
             'equipment_name': self.equipment_name or '',
             'status': self.status or '',
+            'business_hours': self.business_hours or '',
+            'is_open_at_data_time': self.is_open_at_data_time if self.is_open_at_data_time is not None else 1,
             'import_time': self.import_time.strftime('%Y-%m-%d %H:%M:%S') if self.import_time else ''
         }
 

@@ -24,6 +24,7 @@ from shared.database_models import (
     create_db_engine, create_session_factory,
     EquipmentStatus, StoreWhitelist, EquipmentImportLog
 )
+from business_hours_utils import is_open_at
 
 # 解析命令行参数
 parser = argparse.ArgumentParser(description='设备异常数据导入工具')
@@ -143,17 +144,24 @@ try:
     # 读取"营业门店" sheet
     df_operating = pd.read_excel(operating_store_file, sheet_name='营业门店')
     
-    # C列是门店ID，I列是营业状态
-    # 只保留营业状态为"营业中"的门店
+    # C列(索引2)=门店ID，J列(索引9)=营业时间，I列(索引8)=营业状态，Q列(索引16)=营业状态.1
     operating_stores = set()
+    store_business_hours = {}  # store_id -> 营业时间字符串
+    
     for _, row in df_operating.iterrows():
-        store_id = str(row.iloc[2]).strip()  # C列（索引2）
-        status = str(row.iloc[8]).strip()     # I列（索引8）
+        store_id = str(row.iloc[2]).strip()
+        status_i = str(row.iloc[8]).strip()   # I列：营业状态
+        status_q = str(row.iloc[16]).strip()  # Q列：营业状态.1
+        business_hours = str(row.iloc[9]).strip()  # J列：营业时间
         
-        if status == '营业中':
+        # 同时检查I列和Q列，两列都是"营业中"才算在营
+        if status_i == '营业中' and status_q == '营业中':
             operating_stores.add(store_id)
+            if business_hours and business_hours != 'nan':
+                store_business_hours[store_id] = business_hours
     
     print(f"✅ 找到 {len(operating_stores)} 家营业中门店")
+    print(f"   其中有营业时间数据: {len(store_business_hours)} 家")
 except Exception as e:
     print(f"❌ 读取在营门店文件失败: {e}")
     import traceback

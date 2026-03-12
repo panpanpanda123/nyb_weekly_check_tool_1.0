@@ -473,6 +473,7 @@ def register_equipment_routes(app, get_db_session):
                     '设备编号': equipment.equipment_id,
                     '设备名称': equipment.equipment_name,
                     '当前状态': equipment.status,
+                    '数据时间点是否营业': '是' if equipment.is_open_at_data_time else '否',
                     '是否经常出问题': '是' if is_chronic else '否',
                     '触发原因': chronic_reason or '',
                     '最近5天异常次数': count_5days if equipment.equipment_type == 'POS' else '',
@@ -506,21 +507,22 @@ def register_equipment_routes(app, get_db_session):
                 worksheet.column_dimensions['F'].width = 20   # 设备编号
                 worksheet.column_dimensions['G'].width = 20   # 设备名称
                 worksheet.column_dimensions['H'].width = 10   # 当前状态
-                worksheet.column_dimensions['I'].width = 15   # 是否经常出问题
-                worksheet.column_dimensions['J'].width = 20   # 触发原因
-                worksheet.column_dimensions['K'].width = 15   # 最近5天异常次数
-                worksheet.column_dimensions['L'].width = 15   # 最近10天异常次数
-                worksheet.column_dimensions['M'].width = 30   # 异常时间点
-                worksheet.column_dimensions['N'].width = 20   # 未处理日期
-                worksheet.column_dimensions['O'].width = 15   # 近X天处理次数
-                worksheet.column_dimensions['P'].width = 15   # 近X天已恢复次数
-                worksheet.column_dimensions['Q'].width = 15   # 近X天未恢复次数
-                worksheet.column_dimensions['R'].width = 50   # 最近处理记录
-                worksheet.column_dimensions['S'].width = 12   # 当前处理动作
-                worksheet.column_dimensions['T'].width = 30   # 未恢复原因
-                worksheet.column_dimensions['U'].width = 20   # 当前处理时间
-                worksheet.column_dimensions['V'].width = 15   # 预计恢复日期
-                worksheet.column_dimensions['W'].width = 20   # 预计恢复期内跳过
+                worksheet.column_dimensions['I'].width = 15   # 数据时间点是否营业
+                worksheet.column_dimensions['J'].width = 15   # 是否经常出问题
+                worksheet.column_dimensions['K'].width = 20   # 触发原因
+                worksheet.column_dimensions['L'].width = 15   # 最近5天异常次数
+                worksheet.column_dimensions['M'].width = 15   # 最近10天异常次数
+                worksheet.column_dimensions['N'].width = 30   # 异常时间点
+                worksheet.column_dimensions['O'].width = 20   # 未处理日期
+                worksheet.column_dimensions['P'].width = 15   # 近X天处理次数
+                worksheet.column_dimensions['Q'].width = 15   # 近X天已恢复次数
+                worksheet.column_dimensions['R'].width = 15   # 近X天未恢复次数
+                worksheet.column_dimensions['S'].width = 50   # 最近处理记录
+                worksheet.column_dimensions['T'].width = 12   # 当前处理动作
+                worksheet.column_dimensions['U'].width = 30   # 未恢复原因
+                worksheet.column_dimensions['V'].width = 20   # 当前处理时间
+                worksheet.column_dimensions['W'].width = 15   # 预计恢复日期
+                worksheet.column_dimensions['X'].width = 20   # 预计恢复期内跳过
             
             output.seek(0)
             
