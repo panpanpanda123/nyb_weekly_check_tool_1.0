@@ -101,8 +101,20 @@ def extract_data_time(filename):
         return f"{year}年{month}月{day}日 {hour}:{minute}"
     return None
 
+def extract_data_datetime(filename):
+    """从文件名提取 datetime 对象，用于营业时间判断"""
+    import re
+    match = re.search(r'(\d{8})_(\d{4})', filename)
+    if match:
+        date_str = match.group(1)
+        time_str = match.group(2)
+        return datetime.strptime(date_str + time_str, '%Y%m%d%H%M')
+    return None
+
 pos_data_time = extract_data_time(pos_file.name) if pos_file else None
+pos_data_datetime = extract_data_datetime(pos_file.name) if pos_file else None
 stb_data_time = extract_data_time(stb_file.name) if stb_file else None
+stb_data_datetime = extract_data_datetime(stb_file.name) if stb_file else None
 
 if pos_file:
     print(f"✅ 找到收银设备文件: {pos_file.name}")
@@ -209,6 +221,7 @@ if import_pos and pos_file:
         pos_count = 0
         pos_skip_not_operating = 0
         pos_skip_no_whitelist = 0
+        pos_skip_not_open = 0  # 新增：因营业时间过滤的数量
         
         for _, row in df_offline_pos.iterrows():
             store_id = str(row['组织机构代码'])  # 使用组织机构代码匹配门店ID
@@ -225,15 +238,26 @@ if import_pos and pos_file:
             
             whitelist_info = whitelist_dict[store_id]
             
+            # 判断数据时间点门店是否在营业
+            biz_hours = store_business_hours.get(store_id, '')
+            is_open = 1  # 默认认为营业（无营业时间数据时保守处理）
+            if biz_hours and pos_data_datetime:
+                is_open = 1 if is_open_at(biz_hours, pos_data_datetime) else 0
+                if is_open == 0:
+                    pos_skip_not_open += 1
+                    continue  # 跳过：数据时间点门店未营业，不算异常
+            
             equipment = EquipmentStatus(
                 store_id=store_id,
                 store_name=whitelist_info['store_name'],
                 war_zone=whitelist_info['war_zone'],
                 regional_manager=whitelist_info['regional_manager'],
                 equipment_type='POS',
-                equipment_id=str(row.get('设备编号', '')),  # 设备编号作为设备ID
+                equipment_id=str(row.get('设备编号', '')),
                 equipment_name=str(row.get('设备名称', '')),
                 status='离线',
+                business_hours=biz_hours,
+                is_open_at_data_time=is_open,
                 import_time=datetime.now()
             )
             session.add(equipment)
@@ -242,6 +266,8 @@ if import_pos and pos_file:
         print(f"   导入 {pos_count} 条记录")
         print(f"   跳过非营业中: {pos_skip_not_operating}")
         print(f"   跳过不在whitelist: {pos_skip_no_whitelist}")
+        if pos_skip_not_open > 0:
+            print(f"   跳过未在营业时间内: {pos_skip_not_open} （数据时间点门店未开门）")
         
     except Exception as e:
         print(f"❌ 处理收银设备数据失败: {e}")
@@ -288,6 +314,7 @@ if import_stb and stb_file:
         stb_count = 0
         stb_skip_not_operating = 0
         stb_skip_no_whitelist = 0
+        stb_skip_not_open = 0
         
         for _, row in df_offline_stb.iterrows():
             store_id = str(row['设备编码'])
@@ -304,6 +331,15 @@ if import_stb and stb_file:
             
             whitelist_info = whitelist_dict[store_id]
             
+            # 判断数据时间点门店是否在营业
+            biz_hours = store_business_hours.get(store_id, '')
+            is_open = 1
+            if biz_hours and stb_data_datetime:
+                is_open = 1 if is_open_at(biz_hours, stb_data_datetime) else 0
+                if is_open == 0:
+                    stb_skip_not_open += 1
+                    continue  # 跳过：数据时间点门店未营业
+            
             equipment = EquipmentStatus(
                 store_id=store_id,
                 store_name=whitelist_info['store_name'],
@@ -313,6 +349,8 @@ if import_stb and stb_file:
                 equipment_id=store_id,
                 equipment_name=str(row.get('名称', '')),
                 status='离线',
+                business_hours=biz_hours,
+                is_open_at_data_time=is_open,
                 import_time=datetime.now()
             )
             session.add(equipment)
@@ -321,6 +359,8 @@ if import_stb and stb_file:
         print(f"   导入 {stb_count} 条记录")
         print(f"   跳过非营业中: {stb_skip_not_operating}")
         print(f"   跳过不在whitelist: {stb_skip_no_whitelist}")
+        if stb_skip_not_open > 0:
+            print(f"   跳过未在营业时间内: {stb_skip_not_open} （数据时间点门店未开门）")
         
     except Exception as e:
         print(f"❌ 处理机顶盒数据失败: {e}")
@@ -381,12 +421,12 @@ if not args.clear_pos and not args.clear_stb:
         session.close()
         sys.exit(1)
 
-# 8. 创建快照（仅POS）
+# 8. 创建快照 + 自动恢复检测（仅POS）
 if import_pos and pos_file and not args.clear_pos:
     print()
     print("📸 创建POS异常快照...")
     try:
-        from shared.database_models import EquipmentStatusSnapshot
+        from shared.database_models import EquipmentStatusSnapshot, EquipmentProcessing
         from equipment_config import (
             SNAPSHOT_RETENTION_DAYS, 
             PROCESSING_RETENTION_DAYS,
@@ -395,88 +435,98 @@ if import_pos and pos_file and not args.clear_pos:
         )
         from datetime import date, timedelta
         
-        # 判断当前是上午还是下午
-        current_hour = datetime.now().hour
-        snapshot_period = 'AM' if current_hour < AM_PM_BOUNDARY_HOUR else 'PM'
-        snapshot_date = datetime.now()
+        # 用文件名里的数据时间判断时段（而非系统当前时间）
+        data_hour = pos_data_datetime.hour if pos_data_datetime else datetime.now().hour
+        snapshot_period = 'AM' if data_hour < AM_PM_BOUNDARY_HOUR else 'PM'
+        snapshot_date = pos_data_datetime if pos_data_datetime else datetime.now()
+        file_date = snapshot_date.date()
+        file_day_start = datetime.combine(file_date, datetime.min.time())
+        file_day_end = datetime.combine(file_date, datetime.max.time())
         
-        print(f"   时段: {snapshot_period} ({'上午' if snapshot_period == 'AM' else '下午'})")
+        print(f"   文件数据时间: {snapshot_date.strftime('%Y-%m-%d %H:%M')} → 时段: {snapshot_period} ({'上午' if snapshot_period == 'AM' else '下午'})")
         
-        # 检查今天这个时段是否已经创建过快照
-        # 使用日期范围查询，避免datetime和date类型不匹配
-        today_start = datetime.combine(date.today(), datetime.min.time())
-        today_end = datetime.combine(date.today(), datetime.max.time())
-        existing_snapshot = session.query(EquipmentStatusSnapshot)\
-            .filter(EquipmentStatusSnapshot.snapshot_date >= today_start)\
-            .filter(EquipmentStatusSnapshot.snapshot_date <= today_end)\
+        # ── 步骤A：在覆盖快照前，先记录上一次同时段的离线门店 ──
+        prev_snapshot_store_ids = set(
+            sid for (sid,) in session.query(EquipmentStatusSnapshot.store_id)
+            .filter(EquipmentStatusSnapshot.snapshot_date >= file_day_start)
+            .filter(EquipmentStatusSnapshot.snapshot_date <= file_day_end)
+            .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)
+            .filter(EquipmentStatusSnapshot.has_abnormal == 1)
+            .distinct().all()
+        )
+        
+        # ── 步骤B：当前这次导入的离线门店 ──
+        current_offline_store_ids = set(
+            sid for (sid,) in session.query(EquipmentStatus.store_id)
+            .filter(EquipmentStatus.equipment_type == 'POS')
+            .distinct().all()
+        )
+        
+        # ── 步骤C：覆盖快照（先删后建）──
+        deleted_snapshots = session.query(EquipmentStatusSnapshot)\
+            .filter(EquipmentStatusSnapshot.snapshot_date >= file_day_start)\
+            .filter(EquipmentStatusSnapshot.snapshot_date <= file_day_end)\
             .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)\
-            .first()
+            .delete(synchronize_session=False)
+        session.commit()
+        if deleted_snapshots > 0:
+            print(f"   🔄 覆盖旧快照: 删除 {deleted_snapshots} 条")
         
-        if existing_snapshot:
-            print(f"   ⚠️  今天{snapshot_period}时段的快照已存在，跳过创建")
-        else:
-            # 获取所有有POS异常的门店
-            abnormal_stores = session.query(EquipmentStatus.store_id)\
-                .filter(EquipmentStatus.equipment_type == 'POS')\
-                .distinct()\
-                .all()
-            
-            snapshot_count = 0
-            for (store_id,) in abnormal_stores:
-                snapshot = EquipmentStatusSnapshot(
-                    snapshot_date=snapshot_date,
-                    snapshot_period=snapshot_period,
-                    store_id=store_id,
-                    equipment_type='POS',
-                    has_abnormal=1,
-                    created_at=datetime.now()
-                )
-                session.add(snapshot)
-                snapshot_count += 1
-            
-            session.commit()
-            print(f"   ✅ 创建 {snapshot_count} 条快照记录")
+        snapshot_count = 0
+        for store_id in current_offline_store_ids:
+            session.add(EquipmentStatusSnapshot(
+                snapshot_date=snapshot_date,
+                snapshot_period=snapshot_period,
+                store_id=store_id,
+                equipment_type='POS',
+                has_abnormal=1,
+                created_at=datetime.now()
+            ))
+            snapshot_count += 1
+        session.commit()
+        print(f"   ✅ 创建 {snapshot_count} 条快照记录")
         
-        # ========== 关键修复：清空当前时段的处理记录 ==========
-        # 每次导入新数据 = 新一轮，处理状态应该重置
-        # 但保留上午的处理记录（用于判定"当天反复"）
-        from shared.database_models import EquipmentProcessing
+        # ── 步骤D：自动恢复检测 ──
+        # 上次离线 + 这次在线 + 没有处理记录 → 自动写入"已恢复"
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        already_processed_stores = set(
+            sid for (sid,) in session.query(EquipmentProcessing.store_id)
+            .filter(EquipmentProcessing.processed_at >= today_start)
+            .filter(EquipmentProcessing.equipment_type == 'POS')
+            .distinct().all()
+        )
         
-        if snapshot_period == 'AM':
-            # 上午导入：清空所有今天之前的处理记录（昨天的已经没用了）
-            # 同时清空今天上午之前可能残留的处理记录
-            deleted_current = session.query(EquipmentProcessing)\
-                .filter(EquipmentProcessing.processed_at >= today_start)\
-                .delete(synchronize_session=False)
+        auto_recovered_stores = prev_snapshot_store_ids - current_offline_store_ids - already_processed_stores
+        
+        auto_recover_count = 0
+        for store_id in auto_recovered_stores:
+            session.add(EquipmentProcessing(
+                store_id=store_id,
+                equipment_type='POS',
+                action='已恢复',
+                reason='设备已上线（自动检测）',
+                processed_at=datetime.now()
+            ))
+            auto_recover_count += 1
+        
+        if auto_recover_count > 0:
             session.commit()
-            if deleted_current > 0:
-                print(f"   🔄 清空今天的处理记录: {deleted_current} 条（上午新一轮）")
-            else:
-                print(f"   ✅ 今天没有需要清空的处理记录")
-        else:
-            # 下午导入：清空今天下午的处理记录（如果有的话）
-            # 保留上午的处理记录（用于判定"当天反复"）
-            pm_start = datetime.combine(date.today(), datetime.min.time().replace(hour=AM_PM_BOUNDARY_HOUR))
-            deleted_pm = session.query(EquipmentProcessing)\
-                .filter(EquipmentProcessing.processed_at >= pm_start)\
-                .delete(synchronize_session=False)
-            session.commit()
-            if deleted_pm > 0:
-                print(f"   🔄 清空今天下午的处理记录: {deleted_pm} 条（下午新一轮）")
-            
-            # 统计上午保留的处理记录（用于判定"当天反复"）
+            print(f"   ✅ 自动标记已恢复: {auto_recover_count} 家门店（设备重新上线）")
+        
+        # ── 步骤E：打印上午处理记录统计（PM时段参考用）──
+        if snapshot_period == 'PM':
+            pm_boundary = datetime.combine(file_date, datetime.min.time().replace(hour=AM_PM_BOUNDARY_HOUR))
             am_records = session.query(EquipmentProcessing)\
-                .filter(EquipmentProcessing.processed_at >= today_start)\
-                .filter(EquipmentProcessing.processed_at < pm_start)\
+                .filter(EquipmentProcessing.processed_at >= file_day_start)\
+                .filter(EquipmentProcessing.processed_at < pm_boundary)\
                 .count()
             if am_records > 0:
                 recovered_am = session.query(EquipmentProcessing)\
-                    .filter(EquipmentProcessing.processed_at >= today_start)\
-                    .filter(EquipmentProcessing.processed_at < pm_start)\
+                    .filter(EquipmentProcessing.processed_at >= file_day_start)\
+                    .filter(EquipmentProcessing.processed_at < pm_boundary)\
                     .filter(EquipmentProcessing.action == '已恢复')\
                     .count()
-                print(f"   📋 保留上午处理记录: {am_records} 条（其中已恢复: {recovered_am} 条，用于判定当天反复）")
-        # ========== 清空处理记录结束 ==========
+                print(f"   📋 上午处理记录: {am_records} 条（已恢复: {recovered_am} 条，用于判定当天反复）")
         
         # 清理旧快照
         if AUTO_CLEANUP_OLD_SNAPSHOTS:
