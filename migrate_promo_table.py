@@ -84,12 +84,7 @@ def migrate_promo_table():
         session.commit()
         print("✓ 临时表创建成功")
         
-        # 4. 先清空临时表（如果之前运行失败过）
-        print("\n正在清空临时表...")
-        session.execute(text("DELETE FROM promo_participation_new;"))
-        session.commit()
-        
-        # 5. 复制数据（每个门店只保留最新的一条）
+        # 4. 复制数据（每个门店只保留最新的一条）
         print("\n正在复制数据（保留最新记录）...")
         session.execute(text("""
             INSERT INTO promo_participation_new
@@ -109,7 +104,7 @@ def migrate_promo_table():
         """))
         session.commit()
         
-        # 6. 统计数据
+        # 5. 统计数据
         result = session.execute(text("SELECT COUNT(*) FROM promo_participation;"))
         old_count = result.scalar()
         
@@ -121,19 +116,19 @@ def migrate_promo_table():
         print(f"  - 新表记录数: {new_count}")
         print(f"  - 清理重复数据: {old_count - new_count} 条")
         
-        # 7. 删除旧表
+        # 6. 删除旧表
         print("\n正在删除旧表...")
         session.execute(text("DROP TABLE promo_participation;"))
         session.commit()
         print("✓ 旧表已删除")
         
-        # 8. 重命名新表
+        # 7. 重命名新表
         print("\n正在重命名新表...")
         session.execute(text("ALTER TABLE promo_participation_new RENAME TO promo_participation;"))
         session.commit()
         print("✓ 新表已重命名")
         
-        # 9. 创建索引
+        # 8. 创建索引
         print("\n正在创建索引...")
         session.execute(text("""
             CREATE INDEX IF NOT EXISTS idx_promo_war_zone 
