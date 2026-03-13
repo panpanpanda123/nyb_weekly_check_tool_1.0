@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-活动参与度表结构迁移脚本
-Migration Script for Promo Participation Table
+活动参与度重复数据快速修复脚本
+Quick Fix Script for Promo Participation Duplicates
 """
 import sys
 import os
 from pathlib import Path
-from datetime import datetime
 
 # 添加项目根目录到 Python 路径
 current_dir = Path(__file__).resolve().parent
@@ -23,10 +22,10 @@ DATABASE_URL = os.getenv(
 )
 
 
-def migrate_promo_table():
-    """迁移活动参与度表结构"""
+def fix_promo_duplicates():
+    """快速修复活动参与度重复数据"""
     print("="*60)
-    print("活动参与度表结构迁移")
+    print("活动参与度重复数据快速修复")
     print("="*60)
     
     engine = create_db_engine(DATABASE_URL, echo=False)
@@ -34,7 +33,13 @@ def migrate_promo_table():
     session = SessionFactory()
     
     try:
-        # 1. 检查表是否存在
+        # 1. 删除可能存在的临时表
+        print("\n正在清理临时表...")
+        session.execute(text("DROP TABLE IF EXISTS promo_participation_new;"))
+        session.commit()
+        print("✓ 临时表已清理")
+        
+        # 2. 检查原表是否存在
         result = session.execute(text("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -44,12 +49,15 @@ def migrate_promo_table():
         table_exists = result.scalar()
         
         if not table_exists:
-            print("✓ 表不存在，无需迁移")
+            print("✓ 原表不存在，无需修复")
             return
         
-        print("✓ 找到现有表")
+        # 3. 统计原表数据
+        result = session.execute(text("SELECT COUNT(*) FROM promo_participation;"))
+        old_count = result.scalar()
+        print(f"\n✓ 原表记录数: {old_count}")
         
-        # 2. 检查是否有重复数据
+        # 4. 检查重复数据
         result = session.execute(text("""
             SELECT store_id, COUNT(*) as count
             FROM promo_participation
@@ -59,16 +67,18 @@ def migrate_promo_table():
         duplicates = result.fetchall()
         
         if duplicates:
-            print(f"\n⚠️  发现 {len(duplicates)} 个门店有重复数据:")
-            for store_id, count in duplicates[:10]:  # 只显示前10个
+            print(f"\n⚠️  发现 {len(duplicates)} 个门店有重复数据")
+            for store_id, count in duplicates[:5]:
                 print(f"   - 门店 {store_id}: {count} 条记录")
-            if len(duplicates) > 10:
-                print(f"   ... 还有 {len(duplicates) - 10} 个门店")
+            if len(duplicates) > 5:
+                print(f"   ... 还有 {len(duplicates) - 5} 个门店")
+        else:
+            print("\n✓ 没有发现重复数据")
         
-        # 3. 创建临时表，保留每个门店最新的一条记录
-        print("\n正在创建临时表...")
+        # 5. 创建新表结构（store_id 作为主键）
+        print("\n正在创建新表...")
         session.execute(text("""
-            CREATE TABLE IF NOT EXISTS promo_participation_new (
+            CREATE TABLE promo_participation_new (
                 store_id VARCHAR(50) PRIMARY KEY,
                 store_name VARCHAR(255),
                 war_zone VARCHAR(50),
@@ -82,18 +92,28 @@ def migrate_promo_table():
             );
         """))
         session.commit()
-        print("✓ 临时表创建成功")
+        print("✓ 新表创建成功")
         
-        # 4. 先清空临时表（如果之前运行失败过）
-        print("\n正在清空临时表...")
-        session.execute(text("DELETE FROM promo_participation_new;"))
-        session.commit()
-        
-        # 5. 复制数据（每个门店只保留最新的一条）
-        print("\n正在复制数据（保留最新记录）...")
+        # 6. 使用 CTE 复制数据（每个门店只保留最新的一条）
+        print("\n正在复制数据（每个门店保留最新记录）...")
         session.execute(text("""
+            WITH ranked_records AS (
+                SELECT 
+                    store_id,
+                    store_name,
+                    war_zone,
+                    regional_manager,
+                    order_count,
+                    benefit_card_sales,
+                    promo_package_sales,
+                    participation_rate,
+                    data_date,
+                    import_time,
+                    ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY import_time DESC) as rn
+                FROM promo_participation
+            )
             INSERT INTO promo_participation_new
-            SELECT DISTINCT ON (store_id)
+            SELECT 
                 store_id,
                 store_name,
                 war_zone,
@@ -104,15 +124,12 @@ def migrate_promo_table():
                 participation_rate,
                 data_date,
                 import_time
-            FROM promo_participation
-            ORDER BY store_id, import_time DESC;
+            FROM ranked_records
+            WHERE rn = 1;
         """))
         session.commit()
         
-        # 6. 统计数据
-        result = session.execute(text("SELECT COUNT(*) FROM promo_participation;"))
-        old_count = result.scalar()
-        
+        # 7. 统计新表数据
         result = session.execute(text("SELECT COUNT(*) FROM promo_participation_new;"))
         new_count = result.scalar()
         
@@ -121,49 +138,55 @@ def migrate_promo_table():
         print(f"  - 新表记录数: {new_count}")
         print(f"  - 清理重复数据: {old_count - new_count} 条")
         
-        # 7. 删除旧表
+        # 8. 删除旧表
         print("\n正在删除旧表...")
         session.execute(text("DROP TABLE promo_participation;"))
         session.commit()
         print("✓ 旧表已删除")
         
-        # 8. 重命名新表
+        # 9. 重命名新表
         print("\n正在重命名新表...")
         session.execute(text("ALTER TABLE promo_participation_new RENAME TO promo_participation;"))
         session.commit()
-        print("✓ 新表已重命名")
+        print("✓ 新表已重命名为 promo_participation")
         
-        # 9. 创建索引
+        # 10. 创建索引
         print("\n正在创建索引...")
         session.execute(text("""
-            CREATE INDEX IF NOT EXISTS idx_promo_war_zone 
-            ON promo_participation(war_zone);
+            CREATE INDEX idx_promo_war_zone ON promo_participation(war_zone);
         """))
         session.execute(text("""
-            CREATE INDEX IF NOT EXISTS idx_promo_regional_manager 
-            ON promo_participation(regional_manager);
+            CREATE INDEX idx_promo_regional_manager ON promo_participation(regional_manager);
         """))
         session.execute(text("""
-            CREATE INDEX IF NOT EXISTS idx_promo_data_date 
-            ON promo_participation(data_date);
+            CREATE INDEX idx_promo_data_date ON promo_participation(data_date);
         """))
         session.commit()
         print("✓ 索引创建完成")
         
         print(f"\n{'='*60}")
-        print(f"✓ 表结构迁移完成")
+        print(f"✓ 修复完成！")
         print(f"  - 每个门店现在只有一条记录")
         print(f"  - store_id 已设置为主键")
+        print(f"  - 总记录数: {new_count}")
         print(f"{'='*60}\n")
         
     except Exception as e:
         session.rollback()
-        print(f"\n❌ 迁移失败: {str(e)}")
+        print(f"\n❌ 修复失败: {str(e)}")
         import traceback
         traceback.print_exc()
+        
+        # 尝试清理临时表
+        try:
+            session.execute(text("DROP TABLE IF EXISTS promo_participation_new;"))
+            session.commit()
+            print("\n✓ 已清理临时表")
+        except:
+            pass
     finally:
         session.close()
 
 
 if __name__ == '__main__':
-    migrate_promo_table()
+    fix_promo_duplicates()
