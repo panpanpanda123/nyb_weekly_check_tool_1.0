@@ -358,8 +358,11 @@ def register_equipment_routes(app, get_db_session):
             
             equipment_list = session.query(EquipmentStatus).all()
             
-            # 获取当前处理记录
-            current_processing_list = session.query(EquipmentProcessing).all()
+            # 获取当前处理记录（只看今天的，跟网页展示一致）
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            current_processing_list = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
+                .all()
             current_processing_dict = {}
             for p in current_processing_list:
                 key = f"{p.store_id}_{p.equipment_type}"
