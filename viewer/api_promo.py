@@ -22,10 +22,6 @@ def register_promo_routes(app, get_db_session):
                 .filter(PromoParticipation.war_zone.isnot(None), PromoParticipation.war_zone != '')
                 .distinct().order_by(PromoParticipation.war_zone).all()]
 
-            war_zone_managers = [r[0] for r in session.query(PromoParticipation.war_zone_manager)
-                .filter(PromoParticipation.war_zone_manager.isnot(None), PromoParticipation.war_zone_manager != '')
-                .distinct().order_by(PromoParticipation.war_zone_manager).all()]
-
             city_operators = [r[0] for r in session.query(PromoParticipation.city_operator)
                 .filter(PromoParticipation.city_operator.isnot(None), PromoParticipation.city_operator != '')
                 .distinct().order_by(PromoParticipation.city_operator).all()]
@@ -38,7 +34,6 @@ def register_promo_routes(app, get_db_session):
                 'success': True,
                 'data': {
                     'war_zones': war_zones,
-                    'war_zone_managers': war_zone_managers,
                     'city_operators': city_operators,
                     'data_date': data_date,
                 }
@@ -56,11 +51,8 @@ def register_promo_routes(app, get_db_session):
                         PromoParticipation.regional_manager != '')
 
             war_zone = request.args.get('war_zone', '').strip()
-            war_zone_manager = request.args.get('war_zone_manager', '').strip()
             if war_zone:
                 query = query.filter(PromoParticipation.war_zone == war_zone)
-            if war_zone_manager:
-                query = query.filter(PromoParticipation.war_zone_manager == war_zone_manager)
 
             managers = [r[0] for r in query.distinct().order_by(PromoParticipation.regional_manager).all()]
             return jsonify({'success': True, 'data': {'regional_managers': managers}})
@@ -94,7 +86,7 @@ def register_promo_routes(app, get_db_session):
                     func.count(PromoParticipation.store_id).label('store_count'),
                 ).filter(group_col.isnot(None), group_col != '')\
                  .group_by(group_col)\
-                 .order_by(asc('avg_rate')).all()
+                 .order_by(desc('avg_rate')).all()
                 return [{
                     'name': r[0],
                     'avg_rate': round(float(r[1]), 4) if r[1] else 0,
@@ -112,7 +104,6 @@ def register_promo_routes(app, get_db_session):
                     'global_avg': round(float(global_avg), 4) if global_avg else 0,
                     'total_stores': total_stores or 0,
                     'by_war_zone': _rank(PromoParticipation.war_zone),
-                    'by_war_zone_manager': _rank(PromoParticipation.war_zone_manager),
                     'by_regional_manager': _rank(PromoParticipation.regional_manager),
                     'by_city_operator': _rank(PromoParticipation.city_operator),
                 }
@@ -128,7 +119,6 @@ def register_promo_routes(app, get_db_session):
             session = get_db_session()
 
             war_zone = request.args.get('war_zone', '').strip()
-            war_zone_manager = request.args.get('war_zone_manager', '').strip()
             regional_manager = request.args.get('regional_manager', '').strip()
             city_operator = request.args.get('city_operator', '').strip()
             store_search = request.args.get('store_search', '').strip()
@@ -146,8 +136,6 @@ def register_promo_routes(app, get_db_session):
                 )
             if war_zone:
                 query = query.filter(PromoParticipation.war_zone == war_zone)
-            if war_zone_manager:
-                query = query.filter(PromoParticipation.war_zone_manager == war_zone_manager)
             if regional_manager:
                 query = query.filter(PromoParticipation.regional_manager == regional_manager)
             if city_operator:

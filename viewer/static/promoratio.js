@@ -8,7 +8,6 @@ let currentOverviewTab = 'war_zone';
 
 let filters = {
     war_zone: '',
-    war_zone_manager: '',
     regional_manager: '',
     city_operator: '',
     store_search: '',
@@ -63,7 +62,6 @@ function renderOverviewTab(tab) {
 
     const keyMap = {
         'war_zone': 'by_war_zone',
-        'war_zone_manager': 'by_war_zone_manager',
         'regional_manager': 'by_regional_manager',
         'city_operator': 'by_city_operator',
     };
@@ -113,9 +111,6 @@ function renderOverviewTab(tab) {
             if (t === 'war_zone') {
                 document.getElementById('warZoneFilter').value = name;
                 filters.war_zone = name;
-            } else if (t === 'war_zone_manager') {
-                document.getElementById('warZoneManagerFilter').value = name;
-                filters.war_zone_manager = name;
             } else if (t === 'regional_manager') {
                 document.getElementById('regionalManagerFilter').value = name;
                 filters.regional_manager = name;
@@ -141,7 +136,6 @@ async function loadFilterOptions() {
     const data = result.data;
 
     fillSelect('warZoneFilter', data.war_zones);
-    fillSelect('warZoneManagerFilter', data.war_zone_managers);
     fillSelect('cityOperatorFilter', data.city_operators);
 
     // 区域经理用datalist
@@ -196,15 +190,11 @@ function setupEventListeners() {
     // 筛选变化
     document.getElementById('warZoneFilter').addEventListener('change', async (e) => {
         filters.war_zone = e.target.value;
-        const resp = await fetch(`${API_BASE_PATH}/api/promo/regional-managers?war_zone=${encodeURIComponent(filters.war_zone)}&war_zone_manager=${encodeURIComponent(filters.war_zone_manager)}`);
+        const resp = await fetch(`${API_BASE_PATH}/api/promo/regional-managers?war_zone=${encodeURIComponent(filters.war_zone)}`);
         const result = await resp.json();
         if (result.success) updateRegionalManagerDatalist(result.data.regional_managers);
         document.getElementById('regionalManagerFilter').value = '';
         filters.regional_manager = '';
-    });
-
-    document.getElementById('warZoneManagerFilter').addEventListener('change', (e) => {
-        filters.war_zone_manager = e.target.value;
     });
 
     document.getElementById('regionalManagerFilter').addEventListener('change', (e) => {
@@ -264,7 +254,6 @@ function setupEventListeners() {
 
 function clearFilters() {
     document.getElementById('warZoneFilter').value = '';
-    document.getElementById('warZoneManagerFilter').value = '';
     document.getElementById('regionalManagerFilter').value = '';
     document.getElementById('cityOperatorFilter').value = '';
     document.getElementById('storeSearch').value = '';
@@ -273,7 +262,7 @@ function clearFilters() {
     document.getElementById('sortOrderFilter').value = 'asc';
 
     filters = {
-        war_zone: '', war_zone_manager: '', regional_manager: '',
+        war_zone: '', regional_manager: '',
         city_operator: '', store_search: '',
         sort_by: 'participation_rate', sort_order: 'asc'
     };
@@ -344,7 +333,7 @@ function renderStoreList(stores) {
                 <div class="store-info-compact">
                     <div class="store-name-mini">${escapeHtml(s.store_name)}</div>
                     <div class="store-meta-mini">
-                        ${escapeHtml(s.store_id)} · ${escapeHtml(s.war_zone)} · ${escapeHtml(s.war_zone_manager)} · ${escapeHtml(s.regional_manager)} · ${escapeHtml(s.city_operator)}
+                        ${escapeHtml(s.store_id)} · ${escapeHtml(s.war_zone)} · ${escapeHtml(s.regional_manager)} · ${escapeHtml(s.city_operator)}
                     </div>
                 </div>
                 <div class="metrics-compact">

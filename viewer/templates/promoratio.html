@@ -35,7 +35,6 @@
                 </div>
                 <div class="overview-tabs">
                     <button class="overview-tab active" data-tab="war_zone">按战区</button>
-                    <button class="overview-tab" data-tab="war_zone_manager">按战区经理</button>
                     <button class="overview-tab" data-tab="regional_manager">按区域经理</button>
                     <button class="overview-tab" data-tab="city_operator">按省市运营</button>
                 </div>
@@ -69,23 +68,17 @@
                         <select id="warZoneFilter" class="filter-select"><option value="">全部</option></select>
                     </div>
                     <div class="filter-item-half">
-                        <label for="warZoneManagerFilter">战区经理:</label>
-                        <select id="warZoneManagerFilter" class="filter-select"><option value="">全部</option></select>
-                    </div>
-                </div>
-                <div class="filter-row-compact">
-                    <div class="filter-item-half">
                         <label for="regionalManagerFilter">区域经理:</label>
                         <input type="text" id="regionalManagerFilter" class="filter-select"
                                list="regionalManagerList" placeholder="🔍 输入或选择" autocomplete="off">
                         <datalist id="regionalManagerList"></datalist>
                     </div>
+                </div>
+                <div class="filter-row-compact">
                     <div class="filter-item-half">
                         <label for="cityOperatorFilter">省市运营:</label>
                         <select id="cityOperatorFilter" class="filter-select"><option value="">全部</option></select>
                     </div>
-                </div>
-                <div class="filter-row-compact">
                     <div class="filter-item-half">
                         <label for="sortByFilter">排序:</label>
                         <select id="sortByFilter" class="filter-select">
