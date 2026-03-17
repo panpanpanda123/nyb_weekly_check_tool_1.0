@@ -359,7 +359,7 @@ async function searchEquipment() {
             
             // 根据模式渲染
             if (displayMode === 'list') {
-                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed, data.total_recovered, data.total_not_recovered, data.total_chronic);
+                renderEquipmentListMode(data.stores, data.total_stores, data.total_pending, data.total_processed, data.total_recovered, data.total_not_recovered, data.total_chronic, data.filtered_total);
             } else {
                 renderEquipmentList(data.stores);
             }
@@ -490,7 +490,7 @@ function renderCompactActions(store, equipmentType, processing) {
 }
 
 // 渲染列表模式（战区/领导查看）
-function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed, totalRecovered, totalNotRecovered, totalChronic) {
+function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalProcessed, totalRecovered, totalNotRecovered, totalChronic, filteredTotal) {
     const container = document.getElementById('resultsContainer');
     
     if (!stores || stores.length === 0) {
@@ -543,7 +543,7 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                     </div>
                     ` : ''}
                 </div>
-                ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (共 ${stores.length} 家门店，第 ${currentPage} 页)</div>` : ''}
+                ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (共 ${filteredTotal !== undefined ? filteredTotal : stores.length} 家门店，第 ${currentPage} / ${totalPages} 页)</div>` : ''}
             </div>
     `;
     
