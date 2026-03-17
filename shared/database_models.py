@@ -2,7 +2,7 @@
 共用数据库模型
 Shared Database Models for Review System and Viewer System
 """
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, Index
+from sqlalchemy import create_engine, Column, String, Text, DateTime, Integer, Float, Index
 from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
 from datetime import datetime
 import os
@@ -386,28 +386,33 @@ class PromoParticipation(Base):
     """活动参与度模型"""
     __tablename__ = 'promo_participation'
     
-    # 主键 - 使用门店ID作为主键，确保每个门店只有一条记录
+    # 主键
     store_id = Column(String(50), primary_key=True, comment='门店ID')
     
     # 门店信息
     store_name = Column(String(255), comment='门店名称')
+    city_operator = Column(String(50), comment='省市运营')
     war_zone = Column(String(50), comment='战区')
+    war_zone_manager = Column(String(50), comment='战区经理')
     regional_manager = Column(String(50), comment='区域经理')
     
     # 活动数据
-    order_count = Column(Integer, default=0, comment='订单量（F列）')
-    benefit_card_sales = Column(Integer, default=0, comment='权益卡销量（I列）')
-    promo_package_sales = Column(Integer, default=0, comment='活动套餐销量（J列）')
-    participation_rate = Column(String(20), comment='活动参与度（K列）')
+    order_count = Column(Integer, default=0, comment='堂食pos+扫码点餐订单量')
+    pos_order_count = Column(Integer, default=0, comment='POS订单量')
+    scan_order_count = Column(Integer, default=0, comment='扫码点餐订单量')
+    benefit_card_sales = Column(Integer, default=0, comment='权益卡售卖数量')
+    promo_package_sales = Column(Integer, default=0, comment='活动套餐售卖数量')
+    participation_rate = Column(Float, default=0.0, comment='活动参与度')
     
     # 数据时间
-    data_date = Column(String(20), comment='数据日期（如：2026-03-09）')
+    data_date = Column(String(50), comment='数据日期区间')
     import_time = Column(DateTime, default=datetime.now, comment='导入时间')
     
     __table_args__ = (
         Index('idx_promo_war_zone', 'war_zone'),
+        Index('idx_promo_war_zone_manager', 'war_zone_manager'),
         Index('idx_promo_regional_manager', 'regional_manager'),
-        Index('idx_promo_data_date', 'data_date'),
+        Index('idx_promo_city_operator', 'city_operator'),
         {'comment': '活动参与度表'}
     )
     
@@ -415,14 +420,18 @@ class PromoParticipation(Base):
         """转换为字典"""
         return {
             'store_id': self.store_id,
-            'store_name': self.store_name,
-            'war_zone': self.war_zone,
-            'regional_manager': self.regional_manager,
-            'order_count': self.order_count,
-            'benefit_card_sales': self.benefit_card_sales,
-            'promo_package_sales': self.promo_package_sales,
-            'participation_rate': self.participation_rate,
-            'data_date': self.data_date,
+            'store_name': self.store_name or '',
+            'city_operator': self.city_operator or '',
+            'war_zone': self.war_zone or '',
+            'war_zone_manager': self.war_zone_manager or '',
+            'regional_manager': self.regional_manager or '',
+            'order_count': self.order_count or 0,
+            'pos_order_count': self.pos_order_count or 0,
+            'scan_order_count': self.scan_order_count or 0,
+            'benefit_card_sales': self.benefit_card_sales or 0,
+            'promo_package_sales': self.promo_package_sales or 0,
+            'participation_rate': self.participation_rate or 0.0,
+            'data_date': self.data_date or '',
             'import_time': self.import_time.strftime('%Y-%m-%d %H:%M:%S') if self.import_time else ''
         }
 
