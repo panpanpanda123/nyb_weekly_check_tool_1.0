@@ -35,7 +35,7 @@ async function initEquipmentPage() {
 // 首次访问弹窗通知（每个IP/浏览器首次打开时弹出，强制阅读3秒）
 function showFirstVisitNotice() {
     const today = new Date().toISOString().split('T')[0];
-    const noticeKey = `equipment_notice_${today}`;
+    const noticeKey = `equipment_notice_v2_${today}`;
     if (localStorage.getItem(noticeKey)) return;
 
     const overlay = document.createElement('div');
@@ -59,6 +59,9 @@ function showFirstVisitNotice() {
                     <li>特殊情况选择"未恢复"后须填写<b>预计恢复日期</b>（最长7天）</li>
                     <li>恢复期内该门店免查</li>
                 </ul>
+            </div>
+            <div style="margin-top:12px;padding:10px 14px;background:#fff3cd;border-left:3px solid #ffc107;border-radius:4px;font-size:13px;color:#856404;">
+                ⚠️ 下午还离线的话就发警告单了！
             </div>
             <div class="modal-footer">
                 <button id="noticeCloseBtn" class="btn btn-primary" disabled style="min-width:120px;">
