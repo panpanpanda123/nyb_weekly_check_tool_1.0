@@ -5,7 +5,7 @@ Equipment Monitoring Utility Functions
 from datetime import date, timedelta, datetime
 from sqlalchemy.orm import Session
 from shared.database_models import EquipmentStatusSnapshot, EquipmentProcessing
-from equipment_config import CHRONIC_RULES, SNAPSHOT_RETENTION_DAYS
+from equipment_config import CHRONIC_RULES, SNAPSHOT_RETENTION_DAYS, ENABLE_MULTI_DAY_CHRONIC, ENABLE_UNPROCESSED_CHECK, ENABLE_SAME_DAY_REPEAT_CHECK
 
 
 def get_abnormal_count(session: Session, store_id: str, equipment_type: str, days: int, exclude_today: bool = True) -> int:
@@ -145,22 +145,21 @@ def is_chronic_store(session: Session, store_id: str, equipment_type: str) -> tu
         .first()
     
     # 情况1：上午有异常 + 标记"已恢复" + 下午又有异常 = 当天反复
-    if am_abnormal and pm_abnormal and today_processing and today_processing.action == '已恢复':
-        return True, "多次出问题（当天反复）", {'today_repeat': 1}
+    if ENABLE_SAME_DAY_REPEAT_CHECK and am_abnormal and pm_abnormal and today_processing and today_processing.action == '已恢复':
+        return True, "当日反复", {'today_repeat': 1}
     
     # 情况2：上午有异常 + 下午有异常 + 没有处理 = 未及时处理
-    # 注意：只有当下午快照存在时才判定（说明已经到下午了）
-    # 同时获取历史上所有未处理的日期
-    if am_abnormal and pm_abnormal and not today_processing:
+    if ENABLE_UNPROCESSED_CHECK and am_abnormal and pm_abnormal and not today_processing:
         unprocessed_dates = get_unprocessed_dates(session, store_id, equipment_type, days=10)
         return True, "多次出问题（未及时处理）", {'unprocessed': 1, 'unprocessed_dates': unprocessed_dates}
     
-    # 情况3：上午有异常 + 标记"未恢复"但没填预计恢复时间 + 下午又有异常 = 继续提示
-    # 如果填了预计恢复时间，会被should_suppress()过滤掉，不会走到这里
+    # 情况3：上午有异常 + 标记"未恢复"但没填预计恢复时间 + 下午又有异常
     if am_abnormal and pm_abnormal and today_processing and today_processing.action == '未恢复' and not today_processing.expected_recovery_date:
-        # 继续显示为异常，但不标记为"经常出问题"
-        # 这种情况会在列表中显示，但不会触发chronic标记
-        pass  # 继续执行后续的历史统计规则
+        pass
+    
+    # 多日统计规则（功能开关控制）
+    if not ENABLE_MULTI_DAY_CHRONIC:
+        return False, None, {}
     
     # 规则2: 计算各个时间窗口的异常次数（排除今天，避免第一天就触发）
     abnormal_counts = {}

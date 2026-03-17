@@ -348,59 +348,54 @@ def register_equipment_routes(app, get_db_session):
 
     @app.route('/api/equipment/export')
     def export_equipment():
-        """导出设备异常处理结果（包含近期处理记录）"""
+        """导出设备异常处理结果"""
         try:
             session = get_db_session()
             
-            # 获取查询天数参数（默认10天）
+            from equipment_config import ENABLE_MULTI_DAY_CHRONIC
+            
             history_days = int(request.args.get('history_days', 10))
             
             equipment_list = session.query(EquipmentStatus).all()
             
-            # 获取最新的处理记录（当前状态）
+            # 获取当前处理记录
             current_processing_list = session.query(EquipmentProcessing).all()
             current_processing_dict = {}
             for p in current_processing_list:
                 key = f"{p.store_id}_{p.equipment_type}"
                 current_processing_dict[key] = p
             
-            # 获取近期所有处理记录（用于统计处理次数）
-            history_cutoff = datetime.now() - timedelta(days=history_days)
-            all_processing_records = session.query(EquipmentProcessing)\
-                .filter(EquipmentProcessing.processed_at >= history_cutoff)\
-                .order_by(EquipmentProcessing.processed_at.desc())\
-                .all()
-            
-            # 按门店和设备类型分组处理记录
+            # 多日统计相关数据（仅开关打开时查询）
             processing_history_dict = {}
-            for p in all_processing_records:
-                key = f"{p.store_id}_{p.equipment_type}"
-                if key not in processing_history_dict:
-                    processing_history_dict[key] = []
-                processing_history_dict[key].append(p)
-            
-            # 获取快照数据
-            cutoff_date = date.today() - timedelta(days=10)
-            snapshots = session.query(EquipmentStatusSnapshot)\
-                .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff_date)\
-                .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
-                .order_by(EquipmentStatusSnapshot.snapshot_date.desc())\
-                .all()
-            
             snapshot_dict = {}
-            for snapshot in snapshots:
-                key = f"{snapshot.store_id}_{snapshot.equipment_type}"
-                if key not in snapshot_dict:
-                    snapshot_dict[key] = []
-                snapshot_dict[key].append(snapshot)
+            if ENABLE_MULTI_DAY_CHRONIC:
+                history_cutoff = datetime.now() - timedelta(days=history_days)
+                all_processing_records = session.query(EquipmentProcessing)\
+                    .filter(EquipmentProcessing.processed_at >= history_cutoff)\
+                    .order_by(EquipmentProcessing.processed_at.desc())\
+                    .all()
+                for p in all_processing_records:
+                    key = f"{p.store_id}_{p.equipment_type}"
+                    if key not in processing_history_dict:
+                        processing_history_dict[key] = []
+                    processing_history_dict[key].append(p)
+                
+                cutoff_date = date.today() - timedelta(days=10)
+                snapshots = session.query(EquipmentStatusSnapshot)\
+                    .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff_date)\
+                    .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
+                    .order_by(EquipmentStatusSnapshot.snapshot_date.desc())\
+                    .all()
+                for snapshot in snapshots:
+                    key = f"{snapshot.store_id}_{snapshot.equipment_type}"
+                    if key not in snapshot_dict:
+                        snapshot_dict[key] = []
+                    snapshot_dict[key].append(snapshot)
             
-            # 检查是否在预计恢复期内被跳过
             def check_suppressed_status(store_id, equipment_type):
-                """检查门店是否在预计恢复期内被跳过"""
                 from equipment_utils import should_suppress
                 is_suppressed = should_suppress(session, store_id, equipment_type)
                 if is_suppressed:
-                    # 获取预计恢复日期
                     proc = current_processing_dict.get(f"{store_id}_{equipment_type}")
                     if proc and proc.expected_recovery_date:
                         return f"是（预计{proc.expected_recovery_date.strftime('%m-%d')}恢复）"
@@ -410,61 +405,9 @@ def register_equipment_routes(app, get_db_session):
             for equipment in equipment_list:
                 key = f"{equipment.store_id}_{equipment.equipment_type}"
                 current_processing = current_processing_dict.get(key)
-                
-                is_chronic = False
-                chronic_reason = ''
-                count_5days = 0
-                count_10days = 0
-                abnormal_times = ''
-                counts = {}
-                
-                if equipment.equipment_type == 'POS':
-                    is_chronic, chronic_reason, counts = is_chronic_store(
-                        session, 
-                        equipment.store_id, 
-                        equipment.equipment_type
-                    )
-                    count_5days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 5, exclude_today=False)
-                    count_10days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 10, exclude_today=False)
-                    
-                    store_snapshots = snapshot_dict.get(key, [])
-                    if store_snapshots:
-                        time_list = []
-                        seen_times = set()
-                        for snap in store_snapshots:
-                            time_str = snap.snapshot_date.strftime('%m-%d')
-                            period = snap.snapshot_period
-                            time_key = f"{time_str}_{period}"
-                            
-                            if time_key not in seen_times:
-                                seen_times.add(time_key)
-                                period_text = '上午' if period == 'AM' else '下午'
-                                time_list.append(f"{time_str}{period_text}")
-                                
-                                if len(time_list) >= 5:
-                                    break
-                        
-                        abnormal_times = '、'.join(time_list)
-                
-                # 统计近期处理记录
-                history_records = processing_history_dict.get(key, [])
-                total_processing_count = len(history_records)
-                recovered_count = sum(1 for r in history_records if r.action == '已恢复')
-                not_recovered_count = sum(1 for r in history_records if r.action == '未恢复')
-                
-                # 生成处理记录详情（最近5条）
-                processing_details = []
-                for i, record in enumerate(history_records[:5]):
-                    detail = f"{record.processed_at.strftime('%m-%d %H:%M')} {record.action}"
-                    if record.reason:
-                        detail += f"({record.reason[:10]}...)" if len(record.reason) > 10 else f"({record.reason})"
-                    processing_details.append(detail)
-                processing_details_str = '；'.join(processing_details) if processing_details else ''
-                
-                # 检查是否被跳过
                 suppressed_status = check_suppressed_status(equipment.store_id, equipment.equipment_type)
                 
-                export_data.append({
+                row = {
                     '门店ID': equipment.store_id,
                     '门店名称': equipment.store_name,
                     '战区': equipment.war_zone,
@@ -474,22 +417,65 @@ def register_equipment_routes(app, get_db_session):
                     '设备名称': equipment.equipment_name,
                     '当前状态': equipment.status,
                     '数据时间点是否营业': '是' if equipment.is_open_at_data_time else '否',
-                    '是否经常出问题': '是' if is_chronic else '否',
-                    '触发原因': chronic_reason or '',
-                    '最近5天异常次数': count_5days if equipment.equipment_type == 'POS' else '',
-                    '最近10天异常次数': count_10days if equipment.equipment_type == 'POS' else '',
-                    '异常时间点': abnormal_times,
-                    '未处理日期': '、'.join(counts.get('unprocessed_dates', [])) if equipment.equipment_type == 'POS' else '',
-                    f'近{history_days}天处理次数': total_processing_count,
-                    f'近{history_days}天已恢复次数': recovered_count,
-                    f'近{history_days}天未恢复次数': not_recovered_count,
-                    '最近处理记录': processing_details_str,
-                    '当前处理动作': current_processing.action if current_processing else '未处理',
-                    '未恢复原因': current_processing.reason if current_processing else '',
-                    '当前处理时间': current_processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if current_processing and current_processing.processed_at else '',
-                    '预计恢复日期': current_processing.expected_recovery_date.strftime('%Y-%m-%d') if current_processing and current_processing.expected_recovery_date else '',
-                    '预计恢复期内跳过': suppressed_status
-                })
+                }
+                
+                # 多日统计列（跟随功能开关）
+                if ENABLE_MULTI_DAY_CHRONIC:
+                    is_chronic = False
+                    chronic_reason = ''
+                    count_5days = 0
+                    count_10days = 0
+                    abnormal_times = ''
+                    counts = {}
+                    
+                    if equipment.equipment_type == 'POS':
+                        is_chronic, chronic_reason, counts = is_chronic_store(session, equipment.store_id, equipment.equipment_type)
+                        count_5days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 5, exclude_today=False)
+                        count_10days = get_abnormal_count(session, equipment.store_id, equipment.equipment_type, 10, exclude_today=False)
+                        
+                        store_snapshots = snapshot_dict.get(key, [])
+                        if store_snapshots:
+                            time_list = []
+                            seen_times = set()
+                            for snap in store_snapshots:
+                                time_str = snap.snapshot_date.strftime('%m-%d')
+                                period = snap.snapshot_period
+                                time_key = f"{time_str}_{period}"
+                                if time_key not in seen_times:
+                                    seen_times.add(time_key)
+                                    period_text = '上午' if period == 'AM' else '下午'
+                                    time_list.append(f"{time_str}{period_text}")
+                                    if len(time_list) >= 5:
+                                        break
+                            abnormal_times = '、'.join(time_list)
+                    
+                    row['是否经常出问题'] = '是' if is_chronic else '否'
+                    row['触发原因'] = chronic_reason or ''
+                    row['最近5天异常次数'] = count_5days if equipment.equipment_type == 'POS' else ''
+                    row['最近10天异常次数'] = count_10days if equipment.equipment_type == 'POS' else ''
+                    row['异常时间点'] = abnormal_times
+                    row['未处理日期'] = '、'.join(counts.get('unprocessed_dates', [])) if equipment.equipment_type == 'POS' else ''
+                    
+                    history_records = processing_history_dict.get(key, [])
+                    row[f'近{history_days}天处理次数'] = len(history_records)
+                    row[f'近{history_days}天已恢复次数'] = sum(1 for r in history_records if r.action == '已恢复')
+                    row[f'近{history_days}天未恢复次数'] = sum(1 for r in history_records if r.action == '未恢复')
+                    
+                    processing_details = []
+                    for record in history_records[:5]:
+                        detail = f"{record.processed_at.strftime('%m-%d %H:%M')} {record.action}"
+                        if record.reason:
+                            detail += f"({record.reason[:10]}...)" if len(record.reason) > 10 else f"({record.reason})"
+                        processing_details.append(detail)
+                    row['最近处理记录'] = '；'.join(processing_details)
+                
+                row['处理动作'] = current_processing.action if current_processing else '未处理'
+                row['未恢复原因'] = current_processing.reason if current_processing else ''
+                row['处理时间'] = current_processing.processed_at.strftime('%Y-%m-%d %H:%M:%S') if current_processing and current_processing.processed_at else ''
+                row['预计恢复日期'] = current_processing.expected_recovery_date.strftime('%Y-%m-%d') if current_processing and current_processing.expected_recovery_date else ''
+                row['恢复期内免查'] = suppressed_status
+                
+                export_data.append(row)
             
             df = pd.DataFrame(export_data)
             
@@ -498,31 +484,10 @@ def register_equipment_routes(app, get_db_session):
                 df.to_excel(writer, index=False, sheet_name='设备异常处理结果')
                 
                 worksheet = writer.sheets['设备异常处理结果']
-                # 设置列宽
-                worksheet.column_dimensions['A'].width = 12   # 门店ID
-                worksheet.column_dimensions['B'].width = 25   # 门店名称
-                worksheet.column_dimensions['C'].width = 10   # 战区
-                worksheet.column_dimensions['D'].width = 12   # 区域经理
-                worksheet.column_dimensions['E'].width = 12   # 设备类型
-                worksheet.column_dimensions['F'].width = 20   # 设备编号
-                worksheet.column_dimensions['G'].width = 20   # 设备名称
-                worksheet.column_dimensions['H'].width = 10   # 当前状态
-                worksheet.column_dimensions['I'].width = 15   # 数据时间点是否营业
-                worksheet.column_dimensions['J'].width = 15   # 是否经常出问题
-                worksheet.column_dimensions['K'].width = 20   # 触发原因
-                worksheet.column_dimensions['L'].width = 15   # 最近5天异常次数
-                worksheet.column_dimensions['M'].width = 15   # 最近10天异常次数
-                worksheet.column_dimensions['N'].width = 30   # 异常时间点
-                worksheet.column_dimensions['O'].width = 20   # 未处理日期
-                worksheet.column_dimensions['P'].width = 15   # 近X天处理次数
-                worksheet.column_dimensions['Q'].width = 15   # 近X天已恢复次数
-                worksheet.column_dimensions['R'].width = 15   # 近X天未恢复次数
-                worksheet.column_dimensions['S'].width = 50   # 最近处理记录
-                worksheet.column_dimensions['T'].width = 12   # 当前处理动作
-                worksheet.column_dimensions['U'].width = 30   # 未恢复原因
-                worksheet.column_dimensions['V'].width = 20   # 当前处理时间
-                worksheet.column_dimensions['W'].width = 15   # 预计恢复日期
-                worksheet.column_dimensions['X'].width = 20   # 预计恢复期内跳过
+                # 自动设置列宽
+                for i, col in enumerate(df.columns):
+                    max_len = max(len(str(col)), df[col].astype(str).str.len().max() if len(df) > 0 else 0)
+                    worksheet.column_dimensions[chr(65 + i) if i < 26 else chr(64 + i // 26) + chr(65 + i % 26)].width = min(max_len + 4, 50)
             
             output.seek(0)
             

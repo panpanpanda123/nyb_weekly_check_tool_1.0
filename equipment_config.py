@@ -20,7 +20,7 @@ ENABLE_SAME_DAY_REPEAT_CHECK = True
 # 规则2: 未及时处理（优先级第二）
 # 上午有异常 + 下午有异常 + 没有处理记录 = 标记"多次出问题（未及时处理）"
 # 同时记录所有未处理的日期，用于导出统计
-ENABLE_UNPROCESSED_CHECK = True
+# （由功能开关区的 ENABLE_UNPROCESSED_CHECK 控制）
 
 # 规则3: 历史统计规则（优先级第三）
 # 格式：{'days': 天数, 'threshold': 异常次数阈值}
@@ -48,6 +48,13 @@ ENABLE_POS_HISTORY_TRACKING = True
 
 # 是否自动清理过期快照
 AUTO_CLEANUP_OLD_SNAPSHOTS = True
+
+# 是否启用多日统计（经常出问题判定：5天3次、10天4次等历史规则）
+# 关闭后只保留"当天反复"检测，不统计跨天的异常次数
+ENABLE_MULTI_DAY_CHRONIC = False
+
+# 是否启用"未及时处理"检测（上午+下午都异常但没有处理记录）
+ENABLE_UNPROCESSED_CHECK = False
 
 # ==================== 说明 ====================
 """

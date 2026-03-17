@@ -486,47 +486,100 @@ if import_pos and pos_file and not args.clear_pos:
         session.commit()
         print(f"   ✅ 创建 {snapshot_count} 条快照记录")
         
-        # ── 步骤D：自动恢复检测 ──
-        # 上次离线 + 这次在线 + 没有处理记录 → 自动写入"已恢复"
+        # ── 步骤D：处理记录逻辑（AM/PM 不同策略）──
         today_start = datetime.combine(date.today(), datetime.min.time())
-        already_processed_stores = set(
-            sid for (sid,) in session.query(EquipmentProcessing.store_id)
-            .filter(EquipmentProcessing.processed_at >= today_start)
-            .filter(EquipmentProcessing.equipment_type == 'POS')
-            .distinct().all()
-        )
         
-        auto_recovered_stores = prev_snapshot_store_ids - current_offline_store_ids - already_processed_stores
-        
-        auto_recover_count = 0
-        for store_id in auto_recovered_stores:
-            session.add(EquipmentProcessing(
-                store_id=store_id,
-                equipment_type='POS',
-                action='已恢复',
-                reason='设备已上线（自动检测）',
-                processed_at=datetime.now()
-            ))
-            auto_recover_count += 1
-        
-        if auto_recover_count > 0:
+        if snapshot_period == 'AM':
+            # ── 上午：全量清空重建 ──
+            # 清空今天所有处理记录（新一天从零开始）
+            deleted_processing = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
+                .delete(synchronize_session=False)
             session.commit()
-            print(f"   ✅ 自动标记已恢复: {auto_recover_count} 家门店（设备重新上线）")
+            if deleted_processing > 0:
+                print(f"   🔄 清空今天处理记录: {deleted_processing} 条（上午全量重置）")
+            
+            # 同一时段多次导入时：上次离线→这次在线 → 自动标记已恢复
+            auto_recovered_stores = prev_snapshot_store_ids - current_offline_store_ids
+            auto_recover_count = 0
+            for store_id in auto_recovered_stores:
+                session.add(EquipmentProcessing(
+                    store_id=store_id,
+                    equipment_type='POS',
+                    action='已恢复',
+                    reason='设备已上线（自动检测）',
+                    processed_at=datetime.now()
+                ))
+                auto_recover_count += 1
+            if auto_recover_count > 0:
+                session.commit()
+                print(f"   ✅ 自动标记已恢复: {auto_recover_count} 家门店（设备重新上线）")
         
-        # ── 步骤E：打印上午处理记录统计（PM时段参考用）──
-        if snapshot_period == 'PM':
+        else:
+            # ── 下午：保留上午处理记录，检测当日反复 ──
             pm_boundary = datetime.combine(file_date, datetime.min.time().replace(hour=AM_PM_BOUNDARY_HOUR))
+            
+            # 获取上午标记为"已恢复"的门店
+            am_recovered_stores = set(
+                sid for (sid,) in session.query(EquipmentProcessing.store_id)
+                .filter(EquipmentProcessing.processed_at >= today_start)
+                .filter(EquipmentProcessing.processed_at < pm_boundary)
+                .filter(EquipmentProcessing.equipment_type == 'POS')
+                .filter(EquipmentProcessing.action == '已恢复')
+                .distinct().all()
+            )
+            
+            # 上午已恢复 + 下午仍离线 = 当日反复（自动标记）
+            same_day_repeat_stores = am_recovered_stores & current_offline_store_ids
+            repeat_count = 0
+            for store_id in same_day_repeat_stores:
+                # 写入下午的处理记录，标记为当日反复
+                session.add(EquipmentProcessing(
+                    store_id=store_id,
+                    equipment_type='POS',
+                    action='未恢复',
+                    reason='当日反复（上午已恢复，下午再次离线）',
+                    processed_at=datetime.now()
+                ))
+                repeat_count += 1
+            if repeat_count > 0:
+                session.commit()
+                print(f"   ⚠️  当日反复: {repeat_count} 家门店（上午已恢复，下午再次离线）")
+            
+            # 同一时段多次导入时：上次离线→这次在线 → 自动标记已恢复
+            already_processed_stores = set(
+                sid for (sid,) in session.query(EquipmentProcessing.store_id)
+                .filter(EquipmentProcessing.processed_at >= today_start)
+                .filter(EquipmentProcessing.equipment_type == 'POS')
+                .distinct().all()
+            )
+            auto_recovered_stores = prev_snapshot_store_ids - current_offline_store_ids - already_processed_stores
+            auto_recover_count = 0
+            for store_id in auto_recovered_stores:
+                session.add(EquipmentProcessing(
+                    store_id=store_id,
+                    equipment_type='POS',
+                    action='已恢复',
+                    reason='设备已上线（自动检测）',
+                    processed_at=datetime.now()
+                ))
+                auto_recover_count += 1
+            if auto_recover_count > 0:
+                session.commit()
+                print(f"   ✅ 自动标记已恢复: {auto_recover_count} 家门店（设备重新上线）")
+            
+            # 打印上午处理记录统计
             am_records = session.query(EquipmentProcessing)\
-                .filter(EquipmentProcessing.processed_at >= file_day_start)\
+                .filter(EquipmentProcessing.processed_at >= today_start)\
                 .filter(EquipmentProcessing.processed_at < pm_boundary)\
                 .count()
             if am_records > 0:
                 recovered_am = session.query(EquipmentProcessing)\
-                    .filter(EquipmentProcessing.processed_at >= file_day_start)\
+                    .filter(EquipmentProcessing.processed_at >= today_start)\
                     .filter(EquipmentProcessing.processed_at < pm_boundary)\
                     .filter(EquipmentProcessing.action == '已恢复')\
                     .count()
-                print(f"   📋 上午处理记录: {am_records} 条（已恢复: {recovered_am} 条，用于判定当天反复）")
+                print(f"   📋 上午处理记录: {am_records} 条（已恢复: {recovered_am} 条）")
         
         # 清理旧快照
         if AUTO_CLEANUP_OLD_SNAPSHOTS:

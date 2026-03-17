@@ -24,11 +24,72 @@ async function initEquipmentPage() {
     try {
         await loadFilterOptions();
         setupEventListeners();
+        showFirstVisitNotice();
         console.log('✅ 设备异常监控页面初始化完成');
     } catch (error) {
         console.error('❌ 页面初始化失败:', error);
         showToast('页面初始化失败，请刷新重试', 'error');
     }
+}
+
+// 首次访问弹窗通知（每个IP/浏览器首次打开时弹出，强制阅读3秒）
+function showFirstVisitNotice() {
+    const today = new Date().toISOString().split('T')[0];
+    const noticeKey = `equipment_notice_${today}`;
+    if (localStorage.getItem(noticeKey)) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+    overlay.innerHTML = `
+        <div class="modal-dialog" style="max-width:480px;">
+            <div class="modal-header">
+                <h3>📢 收银系统检查须知</h3>
+            </div>
+            <div class="modal-body" style="font-size:14px;line-height:1.8;">
+                <p>请提醒门店注意以下事项：</p>
+                <ul style="padding-left:20px;margin:10px 0;">
+                    <li>收银系统（平板）要保持<b>常亮</b>且停留在收银页面</li>
+                    <li><b>息屏会导致收银系统离线</b>，无法正常接单</li>
+                    <li>如有平板损坏等特殊情况，请提醒门店尽快修理、更换</li>
+                </ul>
+                <p>处理说明：</p>
+                <ul style="padding-left:20px;margin:10px 0;">
+                    <li>请沟通门店重启机顶盒、打开平板确保收银系统在最前展示</li>
+                    <li>特殊情况选择"未恢复"后须填写<b>预计恢复日期</b>（最长7天）</li>
+                    <li>恢复期内该门店免查</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button id="noticeCloseBtn" class="btn btn-primary" disabled style="min-width:120px;">
+                    请阅读 (<span id="noticeCountdown">3</span>s)
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    let remaining = 3;
+    const countdownEl = document.getElementById('noticeCountdown');
+    const closeBtn = document.getElementById('noticeCloseBtn');
+
+    const timer = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+            countdownEl.textContent = remaining;
+        } else {
+            clearInterval(timer);
+            closeBtn.disabled = false;
+            closeBtn.textContent = '我已知晓';
+            closeBtn.style.cursor = 'pointer';
+        }
+    }, 1000);
+
+    closeBtn.addEventListener('click', () => {
+        if (closeBtn.disabled) return;
+        overlay.remove();
+        localStorage.setItem(noticeKey, Date.now().toString());
+    });
 }
 
 // 加载筛选选项
