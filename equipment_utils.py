@@ -193,10 +193,11 @@ def should_suppress(session: Session, store_id: str, equipment_type: str) -> boo
     Returns:
         bool: True=暂时不提示（在预计恢复期内），False=需要提示
     """
-    # 查询最新的处理记录
+    # 查询最新的有预计恢复日期的处理记录（不限今天）
     processing = session.query(EquipmentProcessing)\
         .filter(EquipmentProcessing.store_id == store_id)\
         .filter(EquipmentProcessing.equipment_type == equipment_type)\
+        .filter(EquipmentProcessing.suppressed_until.isnot(None))\
         .order_by(EquipmentProcessing.processed_at.desc())\
         .first()
     

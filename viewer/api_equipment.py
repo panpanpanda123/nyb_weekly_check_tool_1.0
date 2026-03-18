@@ -399,9 +399,16 @@ def register_equipment_routes(app, get_db_session):
                 from equipment_utils import should_suppress
                 is_suppressed = should_suppress(session, store_id, equipment_type)
                 if is_suppressed:
-                    proc = current_processing_dict.get(f"{store_id}_{equipment_type}")
+                    # 查有 suppressed_until 的最新记录（跟 should_suppress 逻辑一致）
+                    proc = session.query(EquipmentProcessing)\
+                        .filter(EquipmentProcessing.store_id == store_id)\
+                        .filter(EquipmentProcessing.equipment_type == equipment_type)\
+                        .filter(EquipmentProcessing.suppressed_until.isnot(None))\
+                        .order_by(EquipmentProcessing.processed_at.desc())\
+                        .first()
                     if proc and proc.expected_recovery_date:
                         return f"是（预计{proc.expected_recovery_date.strftime('%m-%d')}恢复）"
+                    return "是"
                 return "否"
             
             export_data = []
