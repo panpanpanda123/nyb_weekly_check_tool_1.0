@@ -129,6 +129,9 @@ def register_equipment_routes(app, get_db_session):
             
             store_query = session.query(distinct(EquipmentStatus.store_id))
             
+            # 只查询营业时间内的门店（排除 is_open_at_data_time=0 的门店）
+            store_query = store_query.filter(EquipmentStatus.is_open_at_data_time == 1)
+            
             if store_search:
                 store_query = store_query.filter(
                     (EquipmentStatus.store_id == store_search) |
@@ -356,7 +359,10 @@ def register_equipment_routes(app, get_db_session):
             
             history_days = int(request.args.get('history_days', 10))
             
-            equipment_list = session.query(EquipmentStatus).all()
+            # 只导出营业时间内的门店
+            equipment_list = session.query(EquipmentStatus)\
+                .filter(EquipmentStatus.is_open_at_data_time == 1)\
+                .all()
             
             # 获取当前处理记录（只看今天的，跟网页展示一致）
             today_start = datetime.combine(date.today(), datetime.min.time())
@@ -516,4 +522,132 @@ def register_equipment_routes(app, get_db_session):
             return jsonify({
                 'success': False,
                 'error': f'导出失败: {str(e)}'
+            }), 500
+
+    @app.route('/api/equipment/suppressed')
+    def get_suppressed_stores():
+        """获取所有免查门店列表（恢复期内）"""
+        try:
+            session = get_db_session()
+            
+            today = date.today()
+            today_dt = datetime.combine(today, datetime.min.time())
+            
+            # 查询所有 suppressed_until >= 今天 的处理记录
+            suppressed_records = session.query(EquipmentProcessing)\
+                .filter(EquipmentProcessing.suppressed_until.isnot(None))\
+                .filter(EquipmentProcessing.suppressed_until >= today_dt)\
+                .order_by(EquipmentProcessing.processed_at.desc())\
+                .all()
+            
+            # 每个 store_id + equipment_type 只取最新的一条
+            seen = set()
+            result_list = []
+            for rec in suppressed_records:
+                key = f"{rec.store_id}_{rec.equipment_type}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                
+                # 查门店信息（从 whitelist 或 equipment_status）
+                store_info = session.query(EquipmentStatus)\
+                    .filter(EquipmentStatus.store_id == rec.store_id)\
+                    .first()
+                
+                if not store_info:
+                    from shared.database_models import StoreWhitelist
+                    wl = session.query(StoreWhitelist)\
+                        .filter(StoreWhitelist.store_id == rec.store_id)\
+                        .first()
+                    store_name = wl.store_name if wl else rec.store_id
+                    war_zone = wl.war_zone if wl else ''
+                    regional_manager = wl.regional_manager if wl else ''
+                else:
+                    store_name = store_info.store_name
+                    war_zone = store_info.war_zone
+                    regional_manager = store_info.regional_manager
+                
+                suppressed_date = rec.suppressed_until.date() if hasattr(rec.suppressed_until, 'date') else rec.suppressed_until
+                remaining_days = (suppressed_date - today).days
+                
+                result_list.append({
+                    'store_id': rec.store_id,
+                    'store_name': store_name,
+                    'war_zone': war_zone,
+                    'regional_manager': regional_manager,
+                    'equipment_type': rec.equipment_type,
+                    'action': rec.action,
+                    'reason': rec.reason or '',
+                    'processed_at': rec.processed_at.strftime('%Y-%m-%d %H:%M') if rec.processed_at else '',
+                    'expected_recovery_date': rec.expected_recovery_date.strftime('%Y-%m-%d') if rec.expected_recovery_date else '',
+                    'suppressed_until': rec.suppressed_until.strftime('%Y-%m-%d') if rec.suppressed_until else '',
+                    'remaining_days': remaining_days
+                })
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'stores': result_list,
+                    'total': len(result_list)
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'获取免查门店失败: {str(e)}'
+            }), 500
+
+    @app.route('/api/equipment/non-operating')
+    def get_non_operating_stores():
+        """获取检查时间点未营业的门店列表"""
+        try:
+            session = get_db_session()
+            
+            # 查询 is_open_at_data_time=0 的门店（导入时标记为未在营业时间内）
+            non_operating = session.query(EquipmentStatus)\
+                .filter(EquipmentStatus.is_open_at_data_time == 0)\
+                .order_by(EquipmentStatus.war_zone, EquipmentStatus.store_id)\
+                .all()
+            
+            # 按门店分组
+            stores_data = {}
+            for eq in non_operating:
+                if eq.store_id not in stores_data:
+                    stores_data[eq.store_id] = {
+                        'store_id': eq.store_id,
+                        'store_name': eq.store_name,
+                        'war_zone': eq.war_zone,
+                        'regional_manager': eq.regional_manager,
+                        'business_hours': eq.business_hours or '未知',
+                        'equipment': []
+                    }
+                stores_data[eq.store_id]['equipment'].append({
+                    'equipment_type': eq.equipment_type,
+                    'equipment_id': eq.equipment_id,
+                    'equipment_name': eq.equipment_name,
+                    'status': eq.status
+                })
+            
+            # 获取数据时间
+            latest_log = session.query(EquipmentImportLog)\
+                .order_by(EquipmentImportLog.import_time.desc())\
+                .first()
+            data_time = latest_log.data_time if latest_log else ''
+            
+            result_list = list(stores_data.values())
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'stores': result_list,
+                    'total': len(result_list),
+                    'data_time': data_time
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'获取未营业门店失败: {str(e)}'
             }), 500

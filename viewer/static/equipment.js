@@ -543,6 +543,10 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                     </div>
                     ` : ''}
                 </div>
+                <div class="audit-links">
+                    <button class="audit-link-btn" onclick="showSuppressedStores()">🛡️ 免查门店</button>
+                    <button class="audit-link-btn" onclick="showNonOperatingStores()">🕐 未营业门店</button>
+                </div>
                 ${listFilterStatus !== 'all' ? `<div class="filter-hint">📌 当前显示: ${getFilterStatusText()} (共 ${filteredTotal !== undefined ? filteredTotal : stores.length} 家门店，第 ${currentPage} / ${totalPages} 页)</div>` : ''}
             </div>
     `;
@@ -835,6 +839,151 @@ function getFilterStatusText() {
         'chronic': '经常出问题'
     };
     return statusMap[listFilterStatus] || '全部门店';
+}
+
+// 显示免查门店列表
+async function showSuppressedStores() {
+    try {
+        const response = await fetch(`${API_BASE_PATH}/api/equipment/suppressed`);
+        const result = await response.json();
+        
+        if (!result.success) {
+            showToast(result.error || '获取免查门店失败', 'error');
+            return;
+        }
+        
+        const stores = result.data.stores;
+        const total = result.data.total;
+        
+        let tableRows = '';
+        if (stores.length === 0) {
+            tableRows = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999;">当前没有免查门店</td></tr>';
+        } else {
+            tableRows = stores.map(s => `
+                <tr>
+                    <td>${s.store_name} <span class="store-id-tag">${s.store_id}</span></td>
+                    <td>${s.war_zone}</td>
+                    <td>${s.regional_manager}</td>
+                    <td>${s.equipment_type}</td>
+                    <td>${s.reason}</td>
+                    <td>${s.suppressed_until}</td>
+                    <td>${s.remaining_days}天</td>
+                </tr>
+            `).join('');
+        }
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '9998';
+        overlay.innerHTML = `
+            <div class="modal-dialog" style="max-width:800px;">
+                <div class="modal-header">
+                    <h3>🛡️ 免查门店列表（恢复期内）</h3>
+                    <button class="modal-close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+                    <p style="margin-bottom:10px;color:#666;font-size:13px;">共 ${total} 家门店处于恢复期内，检查时自动跳过。请核实是否存在滥用情况。</p>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>门店</th>
+                                <th>战区</th>
+                                <th>区域经理</th>
+                                <th>设备</th>
+                                <th>原因</th>
+                                <th>免查截止</th>
+                                <th>剩余</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+    } catch (error) {
+        console.error('获取免查门店失败:', error);
+        showToast('获取免查门店失败', 'error');
+    }
+}
+
+// 显示未营业门店列表
+async function showNonOperatingStores() {
+    try {
+        const response = await fetch(`${API_BASE_PATH}/api/equipment/non-operating`);
+        const result = await response.json();
+        
+        if (!result.success) {
+            showToast(result.error || '获取未营业门店失败', 'error');
+            return;
+        }
+        
+        const stores = result.data.stores;
+        const total = result.data.total;
+        const dataTime = result.data.data_time || '未知';
+        
+        let tableRows = '';
+        if (stores.length === 0) {
+            tableRows = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">当前没有未营业门店（所有离线门店均在营业时间内）</td></tr>';
+        } else {
+            tableRows = stores.map(s => {
+                const eqList = s.equipment.map(e => e.equipment_type).join('、');
+                return `
+                    <tr>
+                        <td>${s.store_name} <span class="store-id-tag">${s.store_id}</span></td>
+                        <td>${s.war_zone}</td>
+                        <td>${s.regional_manager}</td>
+                        <td>${eqList}</td>
+                        <td style="font-size:12px;">${s.business_hours}</td>
+                        <td>离线</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.zIndex = '9998';
+        overlay.innerHTML = `
+            <div class="modal-dialog" style="max-width:850px;">
+                <div class="modal-header">
+                    <h3>🕐 检查时间点未营业门店</h3>
+                    <button class="modal-close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+                    <p style="margin-bottom:10px;color:#666;font-size:13px;">
+                        数据时间: ${dataTime}。以下 ${total} 家门店设备离线但不在营业时间内，已从异常列表中排除。
+                        <br>请关注是否有门店故意推迟营业时间以规避检查，或营业时间数据有误。
+                    </p>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>门店</th>
+                                <th>战区</th>
+                                <th>区域经理</th>
+                                <th>离线设备</th>
+                                <th>营业时间</th>
+                                <th>设备状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+    } catch (error) {
+        console.error('获取未营业门店失败:', error);
+        showToast('获取未营业门店失败', 'error');
+    }
 }
 
 // 显示预计恢复日期弹窗

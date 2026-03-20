@@ -330,3 +330,74 @@
     vertical-align: middle;
     margin-left: 2px;
 }
+
+/* 审计链接按钮 */
+.audit-links {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.audit-link-btn {
+    padding: 6px 14px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #495057;
+    transition: all 0.2s;
+}
+
+.audit-link-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+/* 审计表格 */
+.audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.audit-table th,
+.audit-table td {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.audit-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.audit-table tr:hover {
+    background: #f1f3f5;
+}
+
+/* 弹窗关闭按钮 */
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #999;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.modal-close-btn:hover {
+    color: #333;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

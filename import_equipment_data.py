@@ -245,7 +245,7 @@ if import_pos and pos_file:
                 is_open = 1 if is_open_at(biz_hours, pos_data_datetime) else 0
                 if is_open == 0:
                     pos_skip_not_open += 1
-                    continue  # 跳过：数据时间点门店未营业，不算异常
+                    # 不再跳过，而是写入DB并标记 is_open_at_data_time=0
             
             equipment = EquipmentStatus(
                 store_id=store_id,
@@ -261,13 +261,14 @@ if import_pos and pos_file:
                 import_time=datetime.now()
             )
             session.add(equipment)
-            pos_count += 1
+            if is_open == 1:
+                pos_count += 1
         
-        print(f"   导入 {pos_count} 条记录")
+        print(f"   导入异常门店: {pos_count} 条记录")
         print(f"   跳过非营业中: {pos_skip_not_operating}")
         print(f"   跳过不在whitelist: {pos_skip_no_whitelist}")
         if pos_skip_not_open > 0:
-            print(f"   跳过未在营业时间内: {pos_skip_not_open} （数据时间点门店未开门）")
+            print(f"   未在营业时间内（已记录但不计入异常）: {pos_skip_not_open}")
         
     except Exception as e:
         print(f"❌ 处理收银设备数据失败: {e}")
@@ -338,7 +339,7 @@ if import_stb and stb_file:
                 is_open = 1 if is_open_at(biz_hours, stb_data_datetime) else 0
                 if is_open == 0:
                     stb_skip_not_open += 1
-                    continue  # 跳过：数据时间点门店未营业
+                    # 不再跳过，而是写入DB并标记 is_open_at_data_time=0
             
             equipment = EquipmentStatus(
                 store_id=store_id,
@@ -354,13 +355,14 @@ if import_stb and stb_file:
                 import_time=datetime.now()
             )
             session.add(equipment)
-            stb_count += 1
+            if is_open == 1:
+                stb_count += 1
         
-        print(f"   导入 {stb_count} 条记录")
+        print(f"   导入异常门店: {stb_count} 条记录")
         print(f"   跳过非营业中: {stb_skip_not_operating}")
         print(f"   跳过不在whitelist: {stb_skip_no_whitelist}")
         if stb_skip_not_open > 0:
-            print(f"   跳过未在营业时间内: {stb_skip_not_open} （数据时间点门店未开门）")
+            print(f"   未在营业时间内（已记录但不计入异常）: {stb_skip_not_open}")
         
     except Exception as e:
         print(f"❌ 处理机顶盒数据失败: {e}")
@@ -455,10 +457,11 @@ if import_pos and pos_file and not args.clear_pos:
             .distinct().all()
         )
         
-        # ── 步骤B：当前这次导入的离线门店 ──
+        # ── 步骤B：当前这次导入的离线门店（仅营业中的） ──
         current_offline_store_ids = set(
             sid for (sid,) in session.query(EquipmentStatus.store_id)
             .filter(EquipmentStatus.equipment_type == 'POS')
+            .filter(EquipmentStatus.is_open_at_data_time == 1)
             .distinct().all()
         )
         
