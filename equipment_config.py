@@ -8,6 +8,7 @@ Equipment Monitoring Configuration
 # 格式：'门店ID'（组织机构代码）
 PERMANENTLY_EXCLUDED_STORES = [
     '478',  # 运河城店（已倒闭）
+    '272',  # 家天下店（已倒闭）
 ]
 
 # ==================== 数据保留配置 ====================
