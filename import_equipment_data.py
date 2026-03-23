@@ -25,6 +25,7 @@ from shared.database_models import (
     EquipmentStatus, StoreWhitelist, EquipmentImportLog
 )
 from business_hours_utils import is_open_at
+from equipment_config import PERMANENTLY_EXCLUDED_STORES
 
 # 解析命令行参数
 parser = argparse.ArgumentParser(description='设备异常数据导入工具')
@@ -231,6 +232,10 @@ if import_pos and pos_file:
                 pos_skip_not_operating += 1
                 continue
             
+            # 跳过永久免查门店（倒闭/长期停业）
+            if store_id in PERMANENTLY_EXCLUDED_STORES:
+                continue
+            
             # 跳过不在whitelist中的门店
             if store_id not in whitelist_dict:
                 pos_skip_no_whitelist += 1
@@ -323,6 +328,10 @@ if import_stb and stb_file:
             # 只保留在营门店列表中的门店
             if store_id not in operating_stores:
                 stb_skip_not_operating += 1
+                continue
+            
+            # 跳过永久免查门店（倒闭/长期停业）
+            if store_id in PERMANENTLY_EXCLUDED_STORES:
                 continue
             
             # 跳过不在whitelist中的门店
