@@ -401,3 +401,19 @@
     justify-content: space-between;
     align-items: center;
 }
+
+/* 历史查询按钮 */
+.history-query-btn {
+    padding: 6px 12px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.history-query-btn:hover {
+    background: #545b62;
+}

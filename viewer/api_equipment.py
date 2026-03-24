@@ -651,3 +651,79 @@ def register_equipment_routes(app, get_db_session):
                 'success': False,
                 'error': f'获取未营业门店失败: {str(e)}'
             }), 500
+
+    @app.route('/api/equipment/store-history')
+    def get_store_history():
+        """查询门店近N天离线历史记录"""
+        try:
+            session = get_db_session()
+
+            keyword = request.args.get('keyword', '').strip()
+            days = int(request.args.get('days', 10))
+
+            if not keyword:
+                return jsonify({'success': False, 'error': '请输入门店ID或名称'}), 400
+
+            # 先找匹配的门店ID
+            from shared.database_models import StoreWhitelist
+            from sqlalchemy import or_
+            matched = session.query(StoreWhitelist.store_id, StoreWhitelist.store_name,
+                                    StoreWhitelist.war_zone, StoreWhitelist.regional_manager)\
+                .filter(or_(
+                    StoreWhitelist.store_id == keyword,
+                    StoreWhitelist.store_name.like(f'%{keyword}%')
+                )).all()
+
+            if not matched:
+                return jsonify({'success': True, 'data': {'stores': [], 'total': 0}})
+
+            cutoff = datetime.now() - timedelta(days=days)
+            result = []
+
+            for store_id, store_name, war_zone, regional_manager in matched:
+                snapshots = session.query(EquipmentStatusSnapshot)\
+                    .filter(EquipmentStatusSnapshot.store_id == store_id)\
+                    .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff)\
+                    .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
+                    .order_by(EquipmentStatusSnapshot.snapshot_date.desc())\
+                    .all()
+
+                processing_records = session.query(EquipmentProcessing)\
+                    .filter(EquipmentProcessing.store_id == store_id)\
+                    .filter(EquipmentProcessing.processed_at >= cutoff)\
+                    .order_by(EquipmentProcessing.processed_at.desc())\
+                    .all()
+
+                proc_by_date = {}
+                for p in processing_records:
+                    d = p.processed_at.strftime('%Y-%m-%d')
+                    if d not in proc_by_date:
+                        proc_by_date[d] = []
+                    proc_by_date[d].append({
+                        'action': p.action,
+                        'reason': p.reason or '',
+                        'time': p.processed_at.strftime('%H:%M')
+                    })
+
+                history = []
+                for snap in snapshots:
+                    d = snap.snapshot_date.strftime('%Y-%m-%d')
+                    history.append({
+                        'date': d,
+                        'period': '上午' if snap.snapshot_period == 'AM' else '下午',
+                        'processing': proc_by_date.get(d, [])
+                    })
+
+                result.append({
+                    'store_id': store_id,
+                    'store_name': store_name,
+                    'war_zone': war_zone or '',
+                    'regional_manager': regional_manager or '',
+                    'history': history,
+                    'total_records': len(snapshots)
+                })
+
+            return jsonify({'success': True, 'data': {'stores': result, 'total': len(result)}})
+
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'查询失败: {str(e)}'}), 500
