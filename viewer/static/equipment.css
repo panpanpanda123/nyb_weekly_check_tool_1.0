@@ -417,3 +417,127 @@
 .history-query-btn:hover {
     background: #545b62;
 }
+
+/* 历史查询弹窗 */
+.history-search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.history-search-bar .form-control {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.history-store-block {
+    margin-bottom: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.history-store-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8f9fa;
+    padding: 9px 12px;
+    flex-wrap: wrap;
+}
+
+.history-store-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.history-store-meta {
+    font-size: 12px;
+    color: #888;
+    flex: 1;
+}
+
+.history-count-badge {
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.history-empty-row {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #28a745;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 13px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.history-table th,
+.history-table td {
+    padding: 7px 12px;
+    border-top: 1px solid #f0f0f0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.history-table th {
+    background: #fafafa;
+    font-weight: 600;
+    color: #555;
+    font-size: 12px;
+}
+
+.history-table tr:hover td {
+    background: #f9f9f9;
+}
+
+.history-time-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.history-time-badge.am {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.history-time-badge.pm {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.history-unhandled {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.history-action {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.history-action.recovered {
+    color: #28a745;
+}
+
+.history-action.not-recovered {
+    color: #dc3545;
+}

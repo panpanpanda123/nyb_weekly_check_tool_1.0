@@ -852,14 +852,14 @@ function showStoreHistoryDialog() {
     overlay.id = 'historyModal';
     overlay.style.zIndex = '9998';
     overlay.innerHTML = `
-        <div class="modal-dialog" style="max-width:680px;">
+        <div class="modal-dialog" style="max-width:660px;">
             <div class="modal-header">
-                <h3>📋 门店离线历史查询（近10天）</h3>
+                <h3>📋 门店离线历史（近10天）</h3>
                 <button class="modal-close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
-                    <input type="text" id="historyKeyword" class="form-control" placeholder="输入门店ID或名称" style="flex:1;" />
+                <div class="history-search-bar">
+                    <input type="text" id="historyKeyword" class="form-control" placeholder="输入门店ID或名称" />
                     <button class="btn btn-primary" onclick="queryStoreHistory()">查询</button>
                 </div>
                 <div id="historyResult"></div>
@@ -879,43 +879,47 @@ function showStoreHistoryDialog() {
 async function queryStoreHistory() {
     const keyword = document.getElementById('historyKeyword').value.trim();
     const resultDiv = document.getElementById('historyResult');
-    if (!keyword) { resultDiv.innerHTML = '<p style="color:#999;">请输入门店ID或名称</p>'; return; }
+    if (!keyword) { resultDiv.innerHTML = '<p class="history-empty">请输入门店ID或名称</p>'; return; }
 
-    resultDiv.innerHTML = '<p style="color:#999;">查询中...</p>';
+    resultDiv.innerHTML = '<p class="history-empty">查询中...</p>';
 
     try {
         const resp = await fetch(`${API_BASE_PATH}/api/equipment/store-history?keyword=${encodeURIComponent(keyword)}&days=10`);
         const result = await resp.json();
 
-        if (!result.success) { resultDiv.innerHTML = `<p style="color:red;">${result.error}</p>`; return; }
+        if (!result.success) { resultDiv.innerHTML = `<p class="history-empty" style="color:#dc3545;">${result.error}</p>`; return; }
 
         const stores = result.data.stores;
         if (stores.length === 0) {
-            resultDiv.innerHTML = '<p style="color:#999;">未找到匹配门店，或近10天无离线记录</p>';
+            resultDiv.innerHTML = '<p class="history-empty">未找到匹配门店，或近10天无离线记录</p>';
             return;
         }
 
         let html = '';
         stores.forEach(store => {
+            const countColor = store.total_records >= 5 ? '#dc3545' : store.total_records >= 2 ? '#fd7e14' : '#28a745';
             html += `
-                <div style="margin-bottom:16px;border:1px solid #dee2e6;border-radius:6px;overflow:hidden;">
-                    <div style="background:#f8f9fa;padding:8px 12px;font-weight:600;font-size:14px;">
-                        ${store.store_name} <span class="store-id-tag">${store.store_id}</span>
-                        <span style="font-weight:normal;color:#666;font-size:12px;margin-left:8px;">${store.war_zone} · ${store.regional_manager}</span>
-                        <span style="float:right;color:${store.total_records > 0 ? '#dc3545' : '#28a745'};font-size:12px;">近10天离线 ${store.total_records} 次</span>
+                <div class="history-store-block">
+                    <div class="history-store-header">
+                        <span class="history-store-name">${store.store_name} <span class="store-id-tag">${store.store_id}</span></span>
+                        <span class="history-store-meta">${store.war_zone} · ${store.regional_manager}</span>
+                        <span class="history-count-badge" style="color:${countColor};">近10天离线 ${store.total_records} 次</span>
                     </div>
                     ${store.history.length === 0
-                        ? '<div style="padding:10px 12px;color:#999;font-size:13px;">近10天无离线记录 ✅</div>'
-                        : `<table class="audit-table" style="margin:0;">
-                            <thead><tr><th>日期</th><th>时段</th><th>处理情况</th></tr></thead>
+                        ? '<div class="history-empty-row">✅ 近10天无离线记录</div>'
+                        : `<table class="history-table">
+                            <thead><tr><th>日期</th><th>数据时间</th><th>处理情况</th></tr></thead>
                             <tbody>
                                 ${store.history.map(h => `
                                     <tr>
                                         <td>${h.date}</td>
-                                        <td>${h.period}</td>
+                                        <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.time}</span></td>
                                         <td>${h.processing.length === 0
-                                            ? '<span style="color:#999;">未处理</span>'
-                                            : h.processing.map(p => `<span style="color:${p.action === '已恢复' ? '#28a745' : '#dc3545'};">${p.time} ${p.action}${p.reason ? '：' + p.reason : ''}</span>`).join('<br>')
+                                            ? '<span class="history-unhandled">未处理</span>'
+                                            : h.processing.map(p => `
+                                                <span class="history-action ${p.action === '已恢复' ? 'recovered' : 'not-recovered'}">
+                                                    ${p.time} ${p.action}${p.reason ? '：' + p.reason : ''}
+                                                </span>`).join('')
                                         }</td>
                                     </tr>
                                 `).join('')}
@@ -928,7 +932,7 @@ async function queryStoreHistory() {
         resultDiv.innerHTML = html;
 
     } catch (e) {
-        resultDiv.innerHTML = '<p style="color:red;">查询失败，请重试</p>';
+        resultDiv.innerHTML = '<p class="history-empty" style="color:#dc3545;">查询失败，请重试</p>';
     }
 }
 

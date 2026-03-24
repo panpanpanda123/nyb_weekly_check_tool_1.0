@@ -708,8 +708,10 @@ def register_equipment_routes(app, get_db_session):
                 history = []
                 for snap in snapshots:
                     d = snap.snapshot_date.strftime('%Y-%m-%d')
+                    time_str = snap.snapshot_date.strftime('%H:%M')
                     history.append({
                         'date': d,
+                        'time': time_str,
                         'period': '上午' if snap.snapshot_period == 'AM' else '下午',
                         'processing': proc_by_date.get(d, [])
                     })
