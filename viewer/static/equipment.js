@@ -894,19 +894,13 @@ async function toggleStoreHistory(storeId, btn) {
                         近10天离线 <span style="color:${countColor};font-weight:700;">${store.total_records}</span> 次
                     </div>
                     <table class="history-table">
-                        <thead><tr><th>日期</th><th>数据时间</th><th>处理情况</th></tr></thead>
+                        <thead><tr><th>日期</th><th>时段</th><th>最后上传时间</th></tr></thead>
                         <tbody>
                             ${store.history.map(h => `
                                 <tr>
                                     <td>${h.date}</td>
-                                    <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.time}</span></td>
-                                    <td>${h.processing.length === 0
-                                        ? '<span class="history-unhandled">未处理</span>'
-                                        : h.processing.map(p => `
-                                            <span class="history-action ${p.action === '已恢复' ? 'recovered' : 'not-recovered'}">
-                                                ${p.time} ${p.action}${p.reason ? '：' + p.reason : ''}
-                                            </span>`).join('')
-                                    }</td>
+                                    <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.period}</span></td>
+                                    <td>${h.time}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -987,19 +981,13 @@ async function queryStoreHistory() {
                     ${store.history.length === 0
                         ? '<div class="history-empty-row">✅ 近10天无离线记录</div>'
                         : `<table class="history-table">
-                            <thead><tr><th>日期</th><th>数据时间</th><th>处理情况</th></tr></thead>
+                            <thead><tr><th>日期</th><th>时段</th><th>最后上传时间</th></tr></thead>
                             <tbody>
                                 ${store.history.map(h => `
                                     <tr>
                                         <td>${h.date}</td>
-                                        <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.time}</span></td>
-                                        <td>${h.processing.length === 0
-                                            ? '<span class="history-unhandled">未处理</span>'
-                                            : h.processing.map(p => `
-                                                <span class="history-action ${p.action === '已恢复' ? 'recovered' : 'not-recovered'}">
-                                                    ${p.time} ${p.action}${p.reason ? '：' + p.reason : ''}
-                                                </span>`).join('')
-                                        }</td>
+                                        <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.period}</span></td>
+                                        <td>${h.time}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>

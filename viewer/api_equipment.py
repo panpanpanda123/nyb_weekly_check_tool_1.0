@@ -664,9 +664,8 @@ def register_equipment_routes(app, get_db_session):
             if not keyword:
                 return jsonify({'success': False, 'error': '请输入门店ID或名称'}), 400
 
-            # 先找匹配的门店ID
             from shared.database_models import StoreWhitelist
-            from sqlalchemy import or_
+            from sqlalchemy import or_, func
             matched = session.query(StoreWhitelist.store_id, StoreWhitelist.store_name,
                                     StoreWhitelist.war_zone, StoreWhitelist.regional_manager)\
                 .filter(or_(
@@ -681,39 +680,30 @@ def register_equipment_routes(app, get_db_session):
             result = []
 
             for store_id, store_name, war_zone, regional_manager in matched:
-                snapshots = session.query(EquipmentStatusSnapshot)\
+                # 按 (日期, 时段) 分组，每组取最新的 snapshot_date
+                # 每个时段只算一次离线，时间显示该时段最后一次上传的时间
+                rows = session.query(
+                        func.date(EquipmentStatusSnapshot.snapshot_date).label('snap_date'),
+                        EquipmentStatusSnapshot.snapshot_period,
+                        func.max(EquipmentStatusSnapshot.snapshot_date).label('latest_time')
+                    )\
                     .filter(EquipmentStatusSnapshot.store_id == store_id)\
                     .filter(EquipmentStatusSnapshot.snapshot_date >= cutoff)\
                     .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
-                    .order_by(EquipmentStatusSnapshot.snapshot_date.desc())\
+                    .group_by(
+                        func.date(EquipmentStatusSnapshot.snapshot_date),
+                        EquipmentStatusSnapshot.snapshot_period
+                    )\
+                    .order_by(func.date(EquipmentStatusSnapshot.snapshot_date).desc(),
+                              EquipmentStatusSnapshot.snapshot_period.desc())\
                     .all()
-
-                processing_records = session.query(EquipmentProcessing)\
-                    .filter(EquipmentProcessing.store_id == store_id)\
-                    .filter(EquipmentProcessing.processed_at >= cutoff)\
-                    .order_by(EquipmentProcessing.processed_at.desc())\
-                    .all()
-
-                proc_by_date = {}
-                for p in processing_records:
-                    d = p.processed_at.strftime('%Y-%m-%d')
-                    if d not in proc_by_date:
-                        proc_by_date[d] = []
-                    proc_by_date[d].append({
-                        'action': p.action,
-                        'reason': p.reason or '',
-                        'time': p.processed_at.strftime('%H:%M')
-                    })
 
                 history = []
-                for snap in snapshots:
-                    d = snap.snapshot_date.strftime('%Y-%m-%d')
-                    time_str = snap.snapshot_date.strftime('%H:%M')
+                for row in rows:
                     history.append({
-                        'date': d,
-                        'time': time_str,
-                        'period': '上午' if snap.snapshot_period == 'AM' else '下午',
-                        'processing': proc_by_date.get(d, [])
+                        'date': str(row.snap_date),
+                        'time': row.latest_time.strftime('%H:%M'),
+                        'period': '上午' if row.snapshot_period == 'AM' else '下午',
                     })
 
                 result.append({
@@ -722,7 +712,7 @@ def register_equipment_routes(app, get_db_session):
                     'war_zone': war_zone or '',
                     'regional_manager': regional_manager or '',
                     'history': history,
-                    'total_records': len(snapshots)
+                    'total_records': len(history)
                 })
 
             return jsonify({'success': True, 'data': {'stores': result, 'total': len(result)}})
