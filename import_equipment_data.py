@@ -283,27 +283,81 @@ if import_pos and pos_file:
 
         if _is_same_period_reimport:
             # ── OR 合并逻辑：同一时段重复导入 ──
+            # 读取本时段"已确认正常"的门店（has_abnormal=0，曾经在营且在线）
+            confirmed_ok_store_ids = set(
+                sid for (sid,) in session.query(EquipmentStatusSnapshot.store_id)
+                .filter(EquipmentStatusSnapshot.snapshot_date >= _day_start)
+                .filter(EquipmentStatusSnapshot.snapshot_date <= _day_end)
+                .filter(EquipmentStatusSnapshot.snapshot_period == _cur_period)
+                .filter(EquipmentStatusSnapshot.has_abnormal == 0)
+                .distinct().all()
+            )
+
             existing_store_ids = set(
                 sid for (sid,) in session.query(EquipmentStatus.store_id)
                 .filter(EquipmentStatus.equipment_type == 'POS')
                 .distinct().all()
             )
+            # 已在异常列表且 is_open_at_data_time==1 的门店（真正的异常门店）
+            existing_open_store_ids = set(
+                sid for (sid,) in session.query(EquipmentStatus.store_id)
+                .filter(EquipmentStatus.equipment_type == 'POS')
+                .filter(EquipmentStatus.is_open_at_data_time == 1)
+                .distinct().all()
+            )
             current_offline_store_ids = set(current_offline_valid.keys())
 
-            # 上次离线、本次在线 → 从异常列表移除（OR逻辑：有一次在线就算正常）
-            recovered_store_ids = existing_store_ids - current_offline_store_ids
+            # 上次离线、本次在营且在线 → 从异常列表移除，并记入"已确认正常"
+            recovered_store_ids = set()
+            for store_id in existing_open_store_ids - current_offline_store_ids:
+                # 判断本次数据时间点该门店是否在营
+                biz_hours = store_business_hours.get(store_id, '')
+                if biz_hours and pos_data_datetime:
+                    in_biz = is_open_at(biz_hours, pos_data_datetime)
+                else:
+                    in_biz = True  # 无营业时间数据，保守认为在营
+                if in_biz:
+                    recovered_store_ids.add(store_id)
+
             if recovered_store_ids:
                 session.query(EquipmentStatus)\
                     .filter(EquipmentStatus.equipment_type == 'POS')\
                     .filter(EquipmentStatus.store_id.in_(recovered_store_ids))\
                     .delete(synchronize_session=False)
+                # 记入"已确认正常"快照（has_abnormal=0），防止后续导入再次加入
+                for store_id in recovered_store_ids:
+                    session.add(EquipmentStatusSnapshot(
+                        snapshot_date=pos_data_datetime or datetime.now(),
+                        snapshot_period=_cur_period,
+                        store_id=store_id,
+                        equipment_type='POS',
+                        has_abnormal=0,
+                        created_at=datetime.now()
+                    ))
                 session.commit()
-                print(f"   ✅ OR逻辑：移除已恢复门店 {len(recovered_store_ids)} 家（本次在线）")
+                print(f"   ✅ OR逻辑：移除已恢复门店 {len(recovered_store_ids)} 家（本次在营且在线）")
 
-            # 本次新出现的离线门店 → 新增
-            new_offline_store_ids = current_offline_store_ids - existing_store_ids
+            # 本次新出现的离线门店 → 仅当该门店未曾"已确认正常"时才新增
+            # 条件：不在已确认正常集合 + 不在现有"真正异常"列表 + 本次在营(is_open==1)
+            new_offline_store_ids = set()
+            for store_id in current_offline_store_ids - existing_open_store_ids:
+                if store_id in confirmed_ok_store_ids:
+                    # 本时段曾经在线过，跳过，不再加入异常
+                    continue
+                info = current_offline_valid[store_id]
+                if info['is_open'] != 1:
+                    # 本次不在营业时间，不算异常
+                    continue
+                new_offline_store_ids.add(store_id)
+
             for store_id in new_offline_store_ids:
                 info = current_offline_valid[store_id]
+                # 如果该门店已有 is_open=0 的旧记录，先删掉
+                session.query(EquipmentStatus)\
+                    .filter(EquipmentStatus.equipment_type == 'POS')\
+                    .filter(EquipmentStatus.store_id == store_id)\
+                    .filter(EquipmentStatus.is_open_at_data_time == 0)\
+                    .delete(synchronize_session=False)
                 for row in info['rows']:
                     session.add(EquipmentStatus(
                         store_id=store_id,
@@ -315,12 +369,12 @@ if import_pos and pos_file:
                         equipment_name=str(row.get('设备名称', '')),
                         status='离线',
                         business_hours=info['biz_hours'],
-                        is_open_at_data_time=info['is_open'],
+                        is_open_at_data_time=1,
                         import_time=datetime.now()
                     ))
             if new_offline_store_ids:
                 session.commit()
-                print(f"   ➕ OR逻辑：新增本次新离线门店 {len(new_offline_store_ids)} 家")
+                print(f"   ➕ OR逻辑：新增本次新离线门店 {len(new_offline_store_ids)} 家（在营且从未在线）")
 
             # 统计最终异常门店数（重新查库）
             pos_count = session.query(EquipmentStatus.store_id)\
@@ -328,7 +382,7 @@ if import_pos and pos_file:
                 .filter(EquipmentStatus.is_open_at_data_time == 1)\
                 .distinct().count()
         else:
-            # ── 首次导入：全量写入 ──
+            # ── 首次导入：全量写入离线门店，同时记录"在营且在线"的门店到快照 ──
             for store_id, info in current_offline_valid.items():
                 for row in info['rows']:
                     session.add(EquipmentStatus(
@@ -346,6 +400,35 @@ if import_pos and pos_file:
                     ))
                 if info['is_open'] == 1:
                     pos_count += 1
+
+            # 记录"在营且在线"的门店（has_abnormal=0），供后续重复导入的 OR 逻辑使用
+            # 即：在营门店中，不在本次离线列表里，且在营业时间内的门店
+            offline_store_ids_set = set(current_offline_valid.keys())
+            confirmed_ok_count = 0
+            for store_id in operating_stores:
+                if store_id in offline_store_ids_set:
+                    continue  # 本次离线，不算
+                if store_id in PERMANENTLY_EXCLUDED_STORES:
+                    continue
+                if store_id not in whitelist_dict:
+                    continue
+                biz_hours = store_business_hours.get(store_id, '')
+                if biz_hours and pos_data_datetime:
+                    if not is_open_at(biz_hours, pos_data_datetime):
+                        continue  # 不在营业时间，不算
+                # 在营且在线，记录
+                session.add(EquipmentStatusSnapshot(
+                    snapshot_date=pos_data_datetime or datetime.now(),
+                    snapshot_period=_cur_period,
+                    store_id=store_id,
+                    equipment_type='POS',
+                    has_abnormal=0,
+                    created_at=datetime.now()
+                ))
+                confirmed_ok_count += 1
+            if confirmed_ok_count > 0:
+                session.commit()
+                print(f"   📝 记录在营且在线门店: {confirmed_ok_count} 家（供后续重复导入 OR 逻辑使用）")
 
         print(f"   导入/合并后异常门店: {pos_count} 条记录")
         print(f"   跳过非营业中: {pos_skip_not_operating}")
@@ -552,11 +635,12 @@ if import_pos and pos_file and not args.clear_pos:
             .distinct().all()
         )
         
-        # ── 步骤C：覆盖快照（先删后建）──
+        # ── 步骤C：覆盖异常快照（只删 has_abnormal=1，保留 has_abnormal=0 的"已确认正常"记录）──
         deleted_snapshots = session.query(EquipmentStatusSnapshot)\
             .filter(EquipmentStatusSnapshot.snapshot_date >= file_day_start)\
             .filter(EquipmentStatusSnapshot.snapshot_date <= file_day_end)\
             .filter(EquipmentStatusSnapshot.snapshot_period == snapshot_period)\
+            .filter(EquipmentStatusSnapshot.has_abnormal == 1)\
             .delete(synchronize_session=False)
         session.commit()
         if deleted_snapshots > 0:
