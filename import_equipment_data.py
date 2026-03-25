@@ -207,11 +207,32 @@ print()
 if import_pos and pos_file:
     print("📥 处理收银设备数据...")
     try:
-        # 只清空POS设备数据（保留处理记录）
-        print("   清空旧POS设备数据...")
-        session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == 'POS').delete()
-        session.commit()
-        print("   ✅ 已清空旧POS设备数据（保留处理记录）")
+        # 判断是否为同一时段的再次导入（用于 OR 逻辑合并）
+        from shared.database_models import EquipmentStatusSnapshot
+        from equipment_config import AM_PM_BOUNDARY_HOUR
+        from datetime import date as date_cls
+        _data_hour = pos_data_datetime.hour if pos_data_datetime else datetime.now().hour
+        _cur_period = 'AM' if _data_hour < AM_PM_BOUNDARY_HOUR else 'PM'
+        _file_date = pos_data_datetime.date() if pos_data_datetime else date_cls.today()
+        _day_start = datetime.combine(_file_date, datetime.min.time())
+        _day_end = datetime.combine(_file_date, datetime.max.time())
+
+        # 检查同一时段是否已有快照（即是否为重复导入）
+        _existing_snapshot_count = session.query(EquipmentStatusSnapshot)\
+            .filter(EquipmentStatusSnapshot.snapshot_date >= _day_start)\
+            .filter(EquipmentStatusSnapshot.snapshot_date <= _day_end)\
+            .filter(EquipmentStatusSnapshot.snapshot_period == _cur_period)\
+            .count()
+        _is_same_period_reimport = _existing_snapshot_count > 0
+
+        if _is_same_period_reimport:
+            print(f"   🔁 检测到同一时段（{'上午' if _cur_period == 'AM' else '下午'}）重复导入，启用 OR 合并逻辑")
+        else:
+            # 首次导入：清空旧POS设备数据
+            print("   清空旧POS设备数据...")
+            session.query(EquipmentStatus).filter(EquipmentStatus.equipment_type == 'POS').delete()
+            session.commit()
+            print("   ✅ 已清空旧POS设备数据（保留处理记录）")
         
         df_pos = pd.read_excel(pos_file, header=1)
         
@@ -224,6 +245,9 @@ if import_pos and pos_file:
         pos_skip_no_whitelist = 0
         pos_skip_not_open = 0  # 新增：因营业时间过滤的数量
         
+        # 构建本次有效离线门店集合
+        current_offline_valid = {}  # store_id -> {'whitelist_info', 'biz_hours', 'is_open', 'rows'}
+
         for _, row in df_offline_pos.iterrows():
             store_id = str(row['组织机构代码'])  # 使用组织机构代码匹配门店ID
             
@@ -241,35 +265,89 @@ if import_pos and pos_file:
                 pos_skip_no_whitelist += 1
                 continue
             
-            whitelist_info = whitelist_dict[store_id]
-            
-            # 判断数据时间点门店是否在营业
             biz_hours = store_business_hours.get(store_id, '')
             is_open = 1  # 默认认为营业（无营业时间数据时保守处理）
             if biz_hours and pos_data_datetime:
                 is_open = 1 if is_open_at(biz_hours, pos_data_datetime) else 0
                 if is_open == 0:
                     pos_skip_not_open += 1
-                    # 不再跳过，而是写入DB并标记 is_open_at_data_time=0
-            
-            equipment = EquipmentStatus(
-                store_id=store_id,
-                store_name=whitelist_info['store_name'],
-                war_zone=whitelist_info['war_zone'],
-                regional_manager=whitelist_info['regional_manager'],
-                equipment_type='POS',
-                equipment_id=str(row.get('设备编号', '')),
-                equipment_name=str(row.get('设备名称', '')),
-                status='离线',
-                business_hours=biz_hours,
-                is_open_at_data_time=is_open,
-                import_time=datetime.now()
+
+            if store_id not in current_offline_valid:
+                current_offline_valid[store_id] = {
+                    'whitelist_info': whitelist_dict[store_id],
+                    'biz_hours': biz_hours,
+                    'is_open': is_open,
+                    'rows': []
+                }
+            current_offline_valid[store_id]['rows'].append(row)
+
+        if _is_same_period_reimport:
+            # ── OR 合并逻辑：同一时段重复导入 ──
+            existing_store_ids = set(
+                sid for (sid,) in session.query(EquipmentStatus.store_id)
+                .filter(EquipmentStatus.equipment_type == 'POS')
+                .distinct().all()
             )
-            session.add(equipment)
-            if is_open == 1:
-                pos_count += 1
-        
-        print(f"   导入异常门店: {pos_count} 条记录")
+            current_offline_store_ids = set(current_offline_valid.keys())
+
+            # 上次离线、本次在线 → 从异常列表移除（OR逻辑：有一次在线就算正常）
+            recovered_store_ids = existing_store_ids - current_offline_store_ids
+            if recovered_store_ids:
+                session.query(EquipmentStatus)\
+                    .filter(EquipmentStatus.equipment_type == 'POS')\
+                    .filter(EquipmentStatus.store_id.in_(recovered_store_ids))\
+                    .delete(synchronize_session=False)
+                session.commit()
+                print(f"   ✅ OR逻辑：移除已恢复门店 {len(recovered_store_ids)} 家（本次在线）")
+
+            # 本次新出现的离线门店 → 新增
+            new_offline_store_ids = current_offline_store_ids - existing_store_ids
+            for store_id in new_offline_store_ids:
+                info = current_offline_valid[store_id]
+                for row in info['rows']:
+                    session.add(EquipmentStatus(
+                        store_id=store_id,
+                        store_name=info['whitelist_info']['store_name'],
+                        war_zone=info['whitelist_info']['war_zone'],
+                        regional_manager=info['whitelist_info']['regional_manager'],
+                        equipment_type='POS',
+                        equipment_id=str(row.get('设备编号', '')),
+                        equipment_name=str(row.get('设备名称', '')),
+                        status='离线',
+                        business_hours=info['biz_hours'],
+                        is_open_at_data_time=info['is_open'],
+                        import_time=datetime.now()
+                    ))
+            if new_offline_store_ids:
+                session.commit()
+                print(f"   ➕ OR逻辑：新增本次新离线门店 {len(new_offline_store_ids)} 家")
+
+            # 统计最终异常门店数（重新查库）
+            pos_count = session.query(EquipmentStatus.store_id)\
+                .filter(EquipmentStatus.equipment_type == 'POS')\
+                .filter(EquipmentStatus.is_open_at_data_time == 1)\
+                .distinct().count()
+        else:
+            # ── 首次导入：全量写入 ──
+            for store_id, info in current_offline_valid.items():
+                for row in info['rows']:
+                    session.add(EquipmentStatus(
+                        store_id=store_id,
+                        store_name=info['whitelist_info']['store_name'],
+                        war_zone=info['whitelist_info']['war_zone'],
+                        regional_manager=info['whitelist_info']['regional_manager'],
+                        equipment_type='POS',
+                        equipment_id=str(row.get('设备编号', '')),
+                        equipment_name=str(row.get('设备名称', '')),
+                        status='离线',
+                        business_hours=info['biz_hours'],
+                        is_open_at_data_time=info['is_open'],
+                        import_time=datetime.now()
+                    ))
+                if info['is_open'] == 1:
+                    pos_count += 1
+
+        print(f"   导入/合并后异常门店: {pos_count} 条记录")
         print(f"   跳过非营业中: {pos_skip_not_operating}")
         print(f"   跳过不在whitelist: {pos_skip_no_whitelist}")
         if pos_skip_not_open > 0:
