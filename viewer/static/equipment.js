@@ -446,7 +446,10 @@ function renderEquipmentList(stores) {
                 <div class="actions-section">
                     ${posEquipment.length > 0 ? renderCompactActions(store, 'POS', store.processing_pos) : ''}
                     ${stbEquipment.length > 0 ? renderCompactActions(store, '机顶盒', store.processing_stb) : ''}
+                    <button class="btn-history-inline" onclick="toggleStoreHistory('${store.store_id}', this)">📋 历史</button>
                 </div>
+                <!-- 历史记录展开区域 -->
+                <div class="store-history-panel" id="history-panel-${store.store_id}" style="display:none;"></div>
             </div>
         `;
     }).join('');
@@ -612,6 +615,8 @@ function renderEquipmentListMode(stores, totalStoresCount, totalPending, totalPr
                         </div>
                     ` : ''}
                 </div>
+                <button class="btn-history-inline" style="margin-top:8px;" onclick="toggleStoreHistory('${store.store_id}', this)">📋 历史</button>
+                <div class="store-history-panel" id="history-panel-${store.store_id}" style="display:none;"></div>
             </div>
         `;
     });
@@ -845,7 +850,81 @@ function getFilterStatusText() {
     return statusMap[listFilterStatus] || '全部门店';
 }
 
-// 门店历史离线记录查询
+// 卡片内历史记录展开/收起（懒加载）
+async function toggleStoreHistory(storeId, btn) {
+    const panel = document.getElementById(`history-panel-${storeId}`);
+    if (!panel) return;
+
+    // 收起
+    if (panel.style.display !== 'none') {
+        panel.style.display = 'none';
+        btn.textContent = '📋 历史';
+        btn.classList.remove('active');
+        return;
+    }
+
+    // 展开：如果已加载过就直接显示
+    if (panel.dataset.loaded === '1') {
+        panel.style.display = 'block';
+        btn.textContent = '📋 收起';
+        btn.classList.add('active');
+        return;
+    }
+
+    // 首次加载
+    btn.textContent = '⏳ 加载中...';
+    btn.disabled = true;
+    panel.style.display = 'block';
+    panel.innerHTML = '<div class="history-inline-loading">加载中...</div>';
+
+    try {
+        const resp = await fetch(`${API_BASE_PATH}/api/equipment/store-history?keyword=${encodeURIComponent(storeId)}&days=10`);
+        const result = await resp.json();
+
+        if (!result.success || !result.data.stores.length) {
+            panel.innerHTML = '<div class="history-inline-empty">近10天无离线记录</div>';
+        } else {
+            const store = result.data.stores[0];
+            if (store.history.length === 0) {
+                panel.innerHTML = '<div class="history-inline-empty">✅ 近10天无离线记录</div>';
+            } else {
+                const countColor = store.total_records >= 5 ? '#dc3545' : store.total_records >= 2 ? '#fd7e14' : '#28a745';
+                panel.innerHTML = `
+                    <div class="history-inline-header">
+                        近10天离线 <span style="color:${countColor};font-weight:700;">${store.total_records}</span> 次
+                    </div>
+                    <table class="history-table">
+                        <thead><tr><th>日期</th><th>数据时间</th><th>处理情况</th></tr></thead>
+                        <tbody>
+                            ${store.history.map(h => `
+                                <tr>
+                                    <td>${h.date}</td>
+                                    <td><span class="history-time-badge ${h.period === '上午' ? 'am' : 'pm'}">${h.time}</span></td>
+                                    <td>${h.processing.length === 0
+                                        ? '<span class="history-unhandled">未处理</span>'
+                                        : h.processing.map(p => `
+                                            <span class="history-action ${p.action === '已恢复' ? 'recovered' : 'not-recovered'}">
+                                                ${p.time} ${p.action}${p.reason ? '：' + p.reason : ''}
+                                            </span>`).join('')
+                                    }</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+        panel.dataset.loaded = '1';
+    } catch (e) {
+        panel.innerHTML = '<div class="history-inline-empty" style="color:#dc3545;">加载失败，请重试</div>';
+    }
+
+    btn.textContent = '📋 收起';
+    btn.disabled = false;
+    btn.classList.add('active');
+}
+
+// 门店历史离线记录查询（弹窗版）
 function showStoreHistoryDialog() {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';

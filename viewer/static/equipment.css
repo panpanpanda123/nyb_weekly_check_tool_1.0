@@ -300,3 +300,82 @@
         font-size: 13px;
     }
 }
+
+/* ==================== 卡片内历史记录展开面板 ==================== */
+
+/* 历史按钮（卡片内） */
+.btn-history-inline {
+    padding: 5px 12px;
+    background: #f1f3f5;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+    align-self: flex-start;
+}
+
+.btn-history-inline:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.btn-history-inline.active {
+    background: #e3f2fd;
+    border-color: #90caf9;
+    color: #1565c0;
+}
+
+.btn-history-inline:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 展开面板容器 */
+/* 卡片模式：横跨整行 */
+.store-card-horizontal .store-history-panel {
+    width: 100%;
+    flex: 0 0 100%;
+    order: 99;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 10px;
+    margin-top: 4px;
+}
+
+/* 列表模式：正常块级 */
+.store-list-item .store-history-panel {
+    margin-top: 8px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 8px;
+}
+
+.history-inline-loading {
+    padding: 10px 0;
+    font-size: 13px;
+    color: #adb5bd;
+    text-align: center;
+}
+
+.history-inline-empty {
+    padding: 8px 0;
+    font-size: 13px;
+    color: #28a745;
+}
+
+.history-inline-header {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+    .btn-history-inline {
+        width: 100%;
+        text-align: center;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}

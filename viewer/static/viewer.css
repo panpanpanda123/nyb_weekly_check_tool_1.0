@@ -2885,6 +2885,7 @@ h1 {
     transition: all 0.2s;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
     min-height: 60px;
 }
