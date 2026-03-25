@@ -379,3 +379,12 @@
         font-size: 13px;
     }
 }
+
+/* 警告单导出按钮 */
+.export-btn-warning {
+    background: #e67e22 !important;
+}
+
+.export-btn-warning:hover {
+    background: #d35400 !important;
+}

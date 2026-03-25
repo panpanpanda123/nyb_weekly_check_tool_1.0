@@ -312,6 +312,7 @@ function setupEventListeners() {
     
     // 导出按钮
     document.getElementById('exportBtn').addEventListener('click', exportEquipment);
+    document.getElementById('exportWarningBtn').addEventListener('click', exportWarning);
     
     // 上一页
     document.getElementById('prevPage').addEventListener('click', () => {
@@ -785,9 +786,14 @@ async function processEquipment(storeId, equipmentType, action, reason, expected
     }
 }
 
-// 导出设备异常数据
+// 导出设备异常数据（处理结果完整版）
 function exportEquipment() {
     window.location.href = `${API_BASE_PATH}/api/equipment/export`;
+}
+
+// 导出警告单（当前时段最终离线门店，用于开具警告单）
+function exportWarning() {
+    window.location.href = `${API_BASE_PATH}/api/equipment/export-warning`;
 }
 
 // 显示加载中

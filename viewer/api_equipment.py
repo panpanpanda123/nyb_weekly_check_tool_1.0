@@ -524,6 +524,77 @@ def register_equipment_routes(app, get_db_session):
                 'error': f'导出失败: {str(e)}'
             }), 500
 
+    @app.route('/api/equipment/export-warning')
+    def export_warning():
+        """导出警告单：当前时段最终离线门店，字段精简，用于开具警告单"""
+        try:
+            session = get_db_session()
+
+            equipment_list = session.query(EquipmentStatus)\
+                .filter(EquipmentStatus.is_open_at_data_time == 1)\
+                .order_by(EquipmentStatus.war_zone, EquipmentStatus.regional_manager,
+                          EquipmentStatus.store_id)\
+                .all()
+
+            # 获取最新导入时间（用于"数据时间点"列）
+            latest_import = session.query(EquipmentImportLog)\
+                .order_by(EquipmentImportLog.import_time.desc())\
+                .first()
+            data_time_str = latest_import.data_time if latest_import and latest_import.data_time else ''
+
+            def get_suppressed_info(store_id, equipment_type):
+                from equipment_utils import should_suppress
+                if not should_suppress(session, store_id, equipment_type):
+                    return '', '否'
+                proc = session.query(EquipmentProcessing)\
+                    .filter(EquipmentProcessing.store_id == store_id)\
+                    .filter(EquipmentProcessing.equipment_type == equipment_type)\
+                    .filter(EquipmentProcessing.suppressed_until.isnot(None))\
+                    .order_by(EquipmentProcessing.processed_at.desc())\
+                    .first()
+                recovery_date = proc.expected_recovery_date.strftime('%Y-%m-%d') if proc and proc.expected_recovery_date else ''
+                return recovery_date, '是'
+
+            export_data = []
+            for eq in equipment_list:
+                recovery_date, suppressed = get_suppressed_info(eq.store_id, eq.equipment_type)
+                export_data.append({
+                    '门店ID': eq.store_id,
+                    '门店名称': eq.store_name,
+                    '战区': eq.war_zone or '',
+                    '区域经理': eq.regional_manager or '',
+                    '设备名称': eq.equipment_name or eq.equipment_id or '',
+                    '当前状态': eq.status or '离线',
+                    '数据时间点是否营业': '是' if eq.is_open_at_data_time else '否',
+                    '预计恢复日期': recovery_date,
+                    '恢复期内免查': suppressed,
+                })
+
+            df = pd.DataFrame(export_data)
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='警告单')
+                ws = writer.sheets['警告单']
+                col_widths = [10, 20, 12, 12, 20, 10, 16, 14, 12]
+                for i, w in enumerate(col_widths):
+                    col_letter = chr(65 + i) if i < 26 else chr(64 + i // 26) + chr(65 + i % 26)
+                    ws.column_dimensions[col_letter].width = w
+            output.seek(0)
+
+            filename = f'设备离线警告单_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            return send_file(
+                output,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=filename
+            )
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': f'导出失败: {str(e)}'}), 500
+
     @app.route('/api/equipment/suppressed')
     def get_suppressed_stores():
         """获取所有免查门店列表（恢复期内）"""
