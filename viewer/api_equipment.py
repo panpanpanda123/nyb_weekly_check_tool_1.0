@@ -493,18 +493,48 @@ def register_equipment_routes(app, get_db_session):
                 
                 export_data.append(row)
             
-            df = pd.DataFrame(export_data)
-            
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+            from openpyxl.utils import get_column_letter
+
+            wb = Workbook()
+            ws = wb.active
+            ws.title = '设备异常处理结果'
+
+            if export_data:
+                headers = list(export_data[0].keys())
+            else:
+                headers = ['门店ID', '门店名称', '战区', '区域经理', '设备类型',
+                           '设备编号', '设备名称', '当前状态', '数据时间点是否营业',
+                           '处理动作', '未恢复原因', '处理时间', '预计恢复日期', '恢复期内免查']
+
+            # 写表头
+            header_fill = PatternFill(start_color='667EEA', end_color='667EEA', fill_type='solid')
+            header_font = Font(color='FFFFFF', bold=True)
+            for col_idx, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+
+            # 写数据行
+            for row_idx, row_data in enumerate(export_data, 2):
+                for col_idx, header in enumerate(headers, 1):
+                    ws.cell(row=row_idx, column=col_idx, value=row_data.get(header, ''))
+
+            # 自动列宽（中文按2字符宽度计算）
+            for col_idx, header in enumerate(headers, 1):
+                col_letter = get_column_letter(col_idx)
+                max_len = sum(2 if ord(c) > 127 else 1 for c in str(header))
+                for row_data in export_data:
+                    val = str(row_data.get(header, ''))
+                    char_len = sum(2 if ord(c) > 127 else 1 for c in val)
+                    if char_len > max_len:
+                        max_len = char_len
+                ws.column_dimensions[col_letter].width = min(max_len + 2, 40)
+
             output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='设备异常处理结果')
-                
-                worksheet = writer.sheets['设备异常处理结果']
-                # 自动设置列宽
-                for i, col in enumerate(df.columns):
-                    max_len = max(len(str(col)), df[col].astype(str).str.len().max() if len(df) > 0 else 0)
-                    worksheet.column_dimensions[chr(65 + i) if i < 26 else chr(64 + i // 26) + chr(65 + i % 26)].width = min(max_len + 4, 50)
-            
+            wb.save(output)
             output.seek(0)
             
             filename = f'设备异常处理结果_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
@@ -570,16 +600,33 @@ def register_equipment_routes(app, get_db_session):
                     '恢复期内免查': suppressed,
                 })
 
-            df = pd.DataFrame(export_data)
+            from openpyxl import Workbook
+            from openpyxl.utils import get_column_letter
+
+            wb2 = Workbook()
+            ws = wb2.active
+            ws.title = '警告单'
+
+            headers = ['门店ID', '门店名称', '战区', '区域经理', '设备名称',
+                       '当前状态', '数据时间点是否营业', '预计恢复日期', '恢复期内免查']
+            col_widths = [10, 20, 12, 12, 20, 10, 16, 14, 12]
+
+            from openpyxl.styles import Font, PatternFill, Alignment
+            header_fill = PatternFill(start_color='667EEA', end_color='667EEA', fill_type='solid')
+            header_font = Font(color='FFFFFF', bold=True)
+            for col_idx, (header, width) in enumerate(zip(headers, col_widths), 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+            for row_idx, row_data in enumerate(export_data, 2):
+                for col_idx, header in enumerate(headers, 1):
+                    ws.cell(row=row_idx, column=col_idx, value=row_data.get(header, ''))
 
             output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='警告单')
-                ws = writer.sheets['警告单']
-                col_widths = [10, 20, 12, 12, 20, 10, 16, 14, 12]
-                for i, w in enumerate(col_widths):
-                    col_letter = chr(65 + i) if i < 26 else chr(64 + i // 26) + chr(65 + i % 26)
-                    ws.column_dimensions[col_letter].width = w
+            wb2.save(output)
             output.seek(0)
 
             filename = f'设备离线警告单_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
