@@ -29,7 +29,7 @@ except ImportError:
     UPLOAD_FOLDER = '.'
     EXCEL_FILE = '检查项记录.xlsx'
     WHITELIST_FILE = 'data/whitelist.xlsx'
-    ADMIN_USERS = ['窦']
+    ADMIN_USERS = ['袁']
     LOG_LEVEL = 'INFO'
     LOG_FILE = 'logs/app.log'
 

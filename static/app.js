@@ -1265,12 +1265,12 @@ async function updateStatsPanel() {
 }
 
 /**
- * 更新管理员面板（仅窦显示）
+ * 更新管理员面板（选择"全部"时显示管理员工具）
  */
 async function updateAdminPanel() {
     const adminPanel = document.getElementById('adminPanel');
     
-    if (currentOperator === '窦') {
+    if (currentOperator === '袁') {
         adminPanel.style.display = 'block';
     } else {
         adminPanel.style.display = 'none';

@@ -9,13 +9,17 @@ import os
 bind = f"0.0.0.0:{os.getenv('PORT', 5001)}"
 
 # Worker进程数（推荐：CPU核心数 * 2 + 1）
-workers = int(os.getenv('GUNICORN_WORKERS', multiprocessing.cpu_count() * 2 + 1))
+workers = int(os.getenv('GUNICORN_WORKERS', min(multiprocessing.cpu_count() * 2 + 1, 4)))
 
 # Worker类型（sync, gevent, eventlet）
-worker_class = os.getenv('GUNICORN_WORKER_CLASS', 'sync')
+# 2核2G服务器推荐gevent，用协程处理并发更高效
+worker_class = os.getenv('GUNICORN_WORKER_CLASS', 'gevent')
 
-# 每个worker的线程数
+# 每个worker的线程数（gevent模式下此项不生效）
 threads = int(os.getenv('GUNICORN_THREADS', 2))
+
+# gevent worker的并发连接数
+worker_connections = int(os.getenv('GUNICORN_WORKER_CONNECTIONS', 100))
 
 # Worker超时时间（秒）
 timeout = int(os.getenv('GUNICORN_TIMEOUT', 120))

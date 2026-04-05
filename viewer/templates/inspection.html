@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>周清审核(运营)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='inspection.css') }}?v={{ range(1, 999999) | random }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏪 周清审核(运营)</h1>
+            <div class="feedback-notice">
+                💬 有使用问题或BUG,请在企微群反馈
+            </div>
+
+            <!-- 功能选项卡 -->
+            <div class="function-tabs">
+                <button class="tab-btn" onclick="location.href='/'">📝 周清结果展示(督导)</button>
+                <button class="tab-btn active">✏️ 周清审核(运营)</button>
+                <button class="tab-btn" onclick="location.href='/rating'">⭐ 门店评级</button>
+                <button class="tab-btn" onclick="location.href='/equipment'">🔧 设备异常</button>
+                <button class="tab-btn" onclick="location.href='/promoratio'">📊 活动参与度</button>
+            </div>
+
+            <div class="header-controls">
+                <div class="filter-section">
+                    <label for="operatorFilter">👤 运营人员:</label>
+                    <select id="operatorFilter" class="operator-filter">
+                        <option value="全部">全部</option>
+                    </select>
+                </div>
+                <div class="search-section">
+                    <input type="text" id="storeSearch" class="store-search" placeholder="门店编号或名称">
+                    <button id="searchBtn" class="search-btn">搜索</button>
+                    <button id="clearSearchBtn" class="clear-search-btn" style="display:none;">✕</button>
+                </div>
+                <span id="reviewedCount" class="count-badge">进度: 0/0</span>
+            </div>
+
+            <!-- 视图切换 -->
+            <div class="view-tabs">
+                <button id="pendingTab" class="view-tab active">📝 待审核</button>
+                <button id="completedTab" class="view-tab">✓ 已完成</button>
+            </div>
+
+            <!-- 管理员面板 -->
+            <div id="adminPanel" class="admin-panel" style="display:none;">
+                <div class="admin-actions">
+                    <label for="uploadWhitelist" class="admin-btn wl-btn">📋 更新白名单</label>
+                    <input type="file" id="uploadWhitelist" accept=".xlsx" style="display:none;">
+                    <label for="uploadFile" class="admin-btn upload-btn">📤 上传检查项Excel</label>
+                    <input type="file" id="uploadFile" accept=".xlsx" style="display:none;">
+                    <button id="exportBtn" class="admin-btn">📥 导出CSV</button>
+                    <button id="syncBtn" class="admin-btn sync-btn">🔄 同步到展示系统</button>
+                </div>
+                <div id="adminTip" class="admin-tip">💡 操作顺序：先更新白名单 → 再上传检查项Excel</div>
+            </div>
+        </header>
+
+        <main id="itemsContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>正在加载数据...</p>
+            </div>
+        </main>
+
+        <!-- 分页 -->
+        <div id="pagination" class="pagination" style="display:none;">
+            <button id="prevPage" class="page-btn">← 上一页</button>
+            <span id="pageInfo" class="page-info">1/1</span>
+            <button id="nextPage" class="page-btn">下一页 →</button>
+        </div>
+    </div>
+
+    <!-- 图片模态框 -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modalImage" onclick="event.stopPropagation()">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- 键盘操作说明 -->
+    <div class="keyboard-help">
+        <div class="help-title">⌨️ 快捷键</div>
+        <div class="help-item"><kbd>←</kbd><kbd>→</kbd> 切换</div>
+        <div class="help-item"><kbd>Enter</kbd> 合格</div>
+        <div class="help-item"><kbd>Space</kbd> 不合格</div>
+    </div>
+
+    <script src="{{ url_for('static', filename='inspection.js') }}?v={{ range(1, 999999) | random }}"></script>
+</body>
+</html>

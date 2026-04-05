@@ -202,6 +202,9 @@ function setupEventListeners() {
     document.getElementById('reviewTab').addEventListener('click', () => {
         window.location.href = '/';
     });
+    document.getElementById('inspectionTab').addEventListener('click', () => {
+        window.location.href = '/inspection';
+    });
     document.getElementById('ratingTab').addEventListener('click', () => {
         window.location.href = '/rating';
     });

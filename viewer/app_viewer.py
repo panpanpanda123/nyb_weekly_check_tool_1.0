@@ -28,6 +28,7 @@ from viewer.api_equipment import register_equipment_routes
 from viewer.api_equipment_history import register_equipment_history_routes
 from viewer.api_promo import register_promo_routes
 from viewer.api_upload import register_upload_routes
+from viewer.api_inspection import register_inspection_routes
 
 # 创建Flask应用
 app = Flask(__name__)
@@ -98,6 +99,12 @@ def promo_ratio():
     return render_template('promoratio.html')
 
 
+@app.route('/inspection')
+def inspection():
+    """周清审核(运营)页面"""
+    return render_template('inspection.html')
+
+
 @app.route('/admin/upload')
 def admin_upload():
     """数据管理页面"""
@@ -123,6 +130,9 @@ register_promo_routes(app, get_db_session)
 
 # 注册文件上传API
 register_upload_routes(app, get_db_session)
+
+# 注册周清审核(运营)API
+register_inspection_routes(app, get_db_session)
 
 
 @app.teardown_appcontext

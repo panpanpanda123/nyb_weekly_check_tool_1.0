@@ -18,6 +18,9 @@ app.config['JSON_AS_ASCII'] = False  # 支持中文JSON响应
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 最大50MB
 app.config['UPLOAD_FOLDER'] = '.'  # 上传到当前目录
 
+# 管理员列表（可通过环境变量配置，多个用逗号分隔）
+ADMIN_USERS = os.getenv('ADMIN_USERS', '袁').split(',')
+
 # 允许的文件扩展名
 ALLOWED_EXTENSIONS = {'xlsx'}
 
@@ -265,7 +268,8 @@ def admin_reset():
         data = request.get_json()
         operator = data.get('operator', '')
         
-        if operator != '窦':
+        # 管理员权限：运营人员在ADMIN_USERS列表中
+        if operator not in ADMIN_USERS:
             return jsonify({'success': False, 'error': '权限不足'}), 403
         
         # 清空数据库中的审核记录
@@ -301,7 +305,7 @@ def admin_upload():
     try:
         # 验证权限
         operator = request.form.get('operator', '')
-        if operator != '窦':
+        if operator not in ADMIN_USERS:
             return jsonify({'success': False, 'error': '权限不足'}), 403
         
         # 检查文件

@@ -436,6 +436,72 @@ class PromoParticipation(Base):
         }
 
 
+class InspectionReview(Base):
+    """周清审核记录模型 - 云端审核系统"""
+    __tablename__ = 'inspection_reviews'
+    
+    # 主键：门店编号_检查项名称
+    item_id = Column(String(255), primary_key=True, comment='检查项唯一标识')
+    
+    # 门店信息
+    store_name = Column(String(255), nullable=False, comment='门店名称')
+    store_id = Column(String(50), nullable=False, index=True, comment='门店编号')
+    area = Column(String(255), comment='所属区域')
+    
+    # 检查项信息
+    item_name = Column(String(255), nullable=False, comment='检查项名称')
+    item_category = Column(String(100), comment='检查项分类')
+    image_url = Column(Text, comment='现场图片URL')
+    no_result = Column(Integer, default=0, comment='是否无现场结果：1=无，0=有')
+    
+    # 审核信息
+    review_result = Column(String(50), comment='审核结果：合格/不合格')
+    problem_note = Column(Text, comment='问题描述')
+    review_time = Column(DateTime, comment='审核时间')
+    
+    # 运营人员
+    operator = Column(String(50), comment='负责运营')
+    
+    __table_args__ = (
+        Index('idx_inspection_store', 'store_id'),
+        Index('idx_inspection_operator', 'operator'),
+        Index('idx_inspection_result', 'review_result'),
+        {'comment': '周清审核记录表（云端）'}
+    )
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.item_id,
+            'item_id': self.item_id,
+            '门店名称': self.store_name,
+            '门店编号': self.store_id,
+            '所属区域': self.area or '',
+            '检查项名称': self.item_name,
+            '检查项分类': self.item_category or '',
+            '标准图': self.image_url or '',
+            '无现场结果': bool(self.no_result),
+            '审核结果': self.review_result or '',
+            '问题描述': self.problem_note or '',
+            '审核时间': self.review_time.strftime('%Y-%m-%d %H:%M:%S') if self.review_time else '',
+            '负责运营': self.operator or '未分配'
+        }
+    
+    def to_item_dict(self):
+        """转换为前端检查项格式"""
+        return {
+            'id': self.item_id,
+            '检查项名称': self.item_name,
+            '检查项分类': self.item_category or '',
+            '门店名称': self.store_name,
+            '门店编号': self.store_id,
+            '所属区域': self.area or '',
+            '标准图': self.image_url or '',
+            '无现场结果': bool(self.no_result),
+            '负责运营': self.operator or '未分配'
+        }
+
+
 class PromoImportLog(Base):
     """活动参与度导入日志"""
     __tablename__ = 'promo_import_log'
@@ -467,4 +533,5 @@ def init_viewer_db(engine):
     print(f"  - 表名: {EquipmentProcessing.__tablename__}")
     print(f"  - 表名: {EquipmentStatusSnapshot.__tablename__}")
     print(f"  - 表名: {PromoParticipation.__tablename__}")
+    print(f"  - 表名: {InspectionReview.__tablename__}")
     print(f"  - 表名: {PromoImportLog.__tablename__}")

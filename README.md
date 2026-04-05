@@ -146,7 +146,7 @@ journalctl -u review-viewer -n 50 -f
 
 ## 💬 反馈
 
-有使用问题或BUG,企微找窦(dou)反馈
+有使用问题或BUG,请在企微群反馈
 
 ## 📝 更新日志
 
@@ -188,4 +188,4 @@ journalctl -u review-viewer -n 50 -f
 
 ## 📄 License
 
-内部项目,仅供牛约堡集团使用
+内部项目,由Blitzepanda开发，仅供内部工作使用

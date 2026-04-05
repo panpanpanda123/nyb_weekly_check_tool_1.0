@@ -179,6 +179,7 @@ function updateRegionalManagerDatalist(managers) {
 function setupEventListeners() {
     // 导航
     document.getElementById('reviewTab').addEventListener('click', () => window.location.href = '/');
+    document.getElementById('inspectionTab').addEventListener('click', () => window.location.href = '/inspection');
     document.getElementById('ratingTab').addEventListener('click', () => window.location.href = '/rating');
     document.getElementById('equipmentTab').addEventListener('click', () => window.location.href = '/equipment');
 

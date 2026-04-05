@@ -46,7 +46,7 @@ LOG_FILE = os.getenv('LOG_FILE', str(BASE_DIR / 'logs' / 'app.log'))
 CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*').split(',')
 
 # 管理员配置
-ADMIN_USERS = os.getenv('ADMIN_USERS', '窦').split(',')
+ADMIN_USERS = os.getenv('ADMIN_USERS', '袁').split(',')
 
 # 性能配置
 SQLALCHEMY_POOL_SIZE = int(os.getenv('SQLALCHEMY_POOL_SIZE', 10))

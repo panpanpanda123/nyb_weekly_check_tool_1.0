@@ -86,6 +86,9 @@ function bindEvents() {
     document.getElementById('reviewTab').addEventListener('click', function() {
         window.location.href = '/';
     });
+    document.getElementById('inspectionTab').addEventListener('click', function() {
+        window.location.href = '/inspection';
+    });
     document.getElementById('equipmentTab').addEventListener('click', function() {
         window.location.href = '/equipment';
     });

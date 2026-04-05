@@ -59,7 +59,14 @@ function bindFunctionTabs() {
     
     if (reviewTab) {
         reviewTab.addEventListener('click', function() {
-            // 当前已在周清审核页面，无需操作
+            // 当前已在周清结果展示页面，无需操作
+        });
+    }
+
+    const inspectionTab = document.getElementById('inspectionTab');
+    if (inspectionTab) {
+        inspectionTab.addEventListener('click', function() {
+            window.location.href = '/inspection';
         });
     }
     
