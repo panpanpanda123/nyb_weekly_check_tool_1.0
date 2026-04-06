@@ -211,6 +211,9 @@ function setupEventListeners() {
     document.getElementById('promoTab').addEventListener('click', () => {
         window.location.href = '/promoratio';
     });
+    document.getElementById('logisticsTab').addEventListener('click', () => {
+        window.location.href = '/logistics/';
+    });
     
     // 战区变化 - 动态加载该战区的区域经理
     document.getElementById('warZoneFilter').addEventListener('change', async (e) => {

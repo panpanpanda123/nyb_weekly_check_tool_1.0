@@ -95,6 +95,9 @@ function bindEvents() {
     document.getElementById('promoTab').addEventListener('click', function() {
         window.location.href = '/promoratio';
     });
+    document.getElementById('logisticsTab').addEventListener('click', function() {
+        window.location.href = '/logistics/';
+    });
     
     // 战区选择变化 - 级联更新区域经理
     document.getElementById('warZoneFilter').addEventListener('change', async function(e) {

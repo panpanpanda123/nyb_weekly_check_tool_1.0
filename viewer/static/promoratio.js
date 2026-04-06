@@ -182,6 +182,7 @@ function setupEventListeners() {
     document.getElementById('inspectionTab').addEventListener('click', () => window.location.href = '/inspection');
     document.getElementById('ratingTab').addEventListener('click', () => window.location.href = '/rating');
     document.getElementById('equipmentTab').addEventListener('click', () => window.location.href = '/equipment');
+    document.getElementById('logisticsTab').addEventListener('click', () => window.location.href = '/logistics/');
 
     // 概览tab切换
     document.querySelectorAll('.overview-tab').forEach(btn => {

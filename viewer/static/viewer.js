@@ -89,6 +89,13 @@ function bindFunctionTabs() {
             window.location.href = '/promoratio';
         });
     }
+    
+    const logisticsTab = document.getElementById('logisticsTab');
+    if (logisticsTab) {
+        logisticsTab.addEventListener('click', function() {
+            window.location.href = '/logistics/';
+        });
+    }
 }
 
 // 监听浏览器返回按钮，用于关闭图片模态框
