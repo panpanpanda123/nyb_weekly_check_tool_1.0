@@ -1,30 +1,29 @@
-// 周清审核(运营) 前端逻辑
+// 周清审核 前端逻辑（按战区筛选）
 
 let allItems = [];
 let reviews = {};
-let currentOperator = '全部';
+let currentWarZone = '全部';
 let currentPage = 1;
 let totalPages = 1;
 let currentView = 'pending';
 let searchMode = false;
 let currentFocusIndex = 0;
 let visibleCards = [];
+let adminPassword = '';
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadOperators();
+    await loadWarZones();
     await loadReviews();
     await loadItems();
-    updateAdminPanel();
 
-    document.getElementById('operatorFilter').addEventListener('change', function(e) {
-        currentOperator = e.target.value;
+    document.getElementById('warZoneFilter').addEventListener('change', function(e) {
+        currentWarZone = e.target.value;
         currentPage = 1;
         searchMode = false;
         document.getElementById('storeSearch').value = '';
         document.getElementById('clearSearchBtn').style.display = 'none';
         loadItems();
         loadReviews();
-        updateAdminPanel();
     });
 
     document.getElementById('pendingTab').addEventListener('click', () => switchView('pending'));
@@ -32,15 +31,66 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('searchBtn').addEventListener('click', performSearch);
     document.getElementById('storeSearch').addEventListener('keydown', e => { if (e.key === 'Enter') performSearch(); });
     document.getElementById('clearSearchBtn').addEventListener('click', clearSearch);
-    document.getElementById('exportBtn').addEventListener('click', exportCSV);
-    document.getElementById('syncBtn').addEventListener('click', syncToViewer);
-    document.getElementById('uploadFile').addEventListener('change', uploadNewFile);
-    document.getElementById('uploadWhitelist').addEventListener('change', uploadWhitelistFile);
     document.getElementById('prevPage').addEventListener('click', () => { if (currentPage > 1) { currentPage--; loadItems(); } });
     document.getElementById('nextPage').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; loadItems(); } });
 
+    // 管理员面板按钮
+    const exportBtn = document.getElementById('exportBtn');
+    const syncBtn = document.getElementById('syncBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const uploadFile = document.getElementById('uploadFile');
+    const uploadWhitelist = document.getElementById('uploadWhitelist');
+    const adminLoginBtn = document.getElementById('adminLoginBtn');
+    const passwordCancel = document.getElementById('passwordCancel');
+    const passwordConfirm = document.getElementById('passwordConfirm');
+    const passwordInput = document.getElementById('passwordInput');
+
+    if (exportBtn) exportBtn.addEventListener('click', exportCSV);
+    if (syncBtn) syncBtn.addEventListener('click', syncToViewer);
+    if (resetBtn) resetBtn.addEventListener('click', resetData);
+    if (uploadFile) uploadFile.addEventListener('change', uploadNewFile);
+    if (uploadWhitelist) uploadWhitelist.addEventListener('change', uploadWhitelistFile);
+    if (adminLoginBtn) adminLoginBtn.addEventListener('click', showPasswordModal);
+    if (passwordCancel) passwordCancel.addEventListener('click', hidePasswordModal);
+    if (passwordConfirm) passwordConfirm.addEventListener('click', verifyPassword);
+    if (passwordInput) passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') verifyPassword(); });
+
     setupKeyboardNav();
 });
+
+function showPasswordModal() {
+    document.getElementById('passwordModal').classList.add('show');
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('passwordInput').focus();
+}
+
+function hidePasswordModal() {
+    document.getElementById('passwordModal').classList.remove('show');
+}
+
+async function verifyPassword() {
+    const password = document.getElementById('passwordInput').value;
+    if (!password) { showToast('请输入密码', 'error'); return; }
+    try {
+        const res = await fetch('/api/inspection/verify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (data.success) {
+            adminPassword = password;
+            hidePasswordModal();
+            document.getElementById('adminActions').style.display = 'flex';
+            document.getElementById('adminLoginBtn').style.display = 'none';
+            document.getElementById('adminStatus').textContent = '✓ 已验证';
+            document.getElementById('adminStatus').className = 'admin-status verified';
+            showToast('✓ 密码验证成功', 'success');
+        } else {
+            showToast('密码错误', 'error');
+        }
+    } catch(e) { showToast('验证失败', 'error'); }
+}
 
 function setupKeyboardNav() {
     document.addEventListener('keydown', function(e) {
@@ -84,40 +134,35 @@ function markCurrentFail() {
     if (id) submitReview(id, '不合格');
 }
 
-async function loadOperators() {
+async function loadWarZones() {
     try {
-        const res = await fetch('/api/inspection/operators');
-        const ops = await res.json();
-        const sel = document.getElementById('operatorFilter');
-        // 保留当前选中值
+        const res = await fetch('/api/inspection/war-zones');
+        const zones = await res.json();
+        const sel = document.getElementById('warZoneFilter');
         const current = sel.value;
-        // 清空除"全部"外的选项
         while (sel.options.length > 1) sel.remove(1);
-        ops.forEach(op => {
+        zones.forEach(zone => {
             const o = document.createElement('option');
-            o.value = op; o.textContent = op;
+            o.value = zone; o.textContent = zone;
             sel.appendChild(o);
         });
-        // 恢复选中值
         if (current && [...sel.options].some(o => o.value === current)) {
             sel.value = current;
-            currentOperator = current;
+            currentWarZone = current;
         }
-    } catch(e) { console.error('加载运营人员失败:', e); }
+    } catch(e) { console.error('加载战区失败:', e); }
 }
 
 async function loadItems() {
     if (searchMode) return;
     try {
-        const params = new URLSearchParams({ operator: currentOperator, page: currentPage, per_page: 10 });
+        const params = new URLSearchParams({ war_zone: currentWarZone, page: currentPage, per_page: 10 });
         const res = await fetch(`/api/inspection/items?${params}`);
         const data = await res.json();
         allItems = data.items || [];
         totalPages = data.total_pages || 1;
-
         document.getElementById('reviewedCount').textContent =
             `进度: ${data.total_completed_stores}/${data.total_completed_stores + data.total_pending_stores}`;
-
         if (currentView === 'pending') renderPendingItems();
         updatePagination();
     } catch(e) { console.error('加载数据失败:', e); showToast('加载失败，请刷新', 'error'); }
@@ -126,7 +171,7 @@ async function loadItems() {
 async function loadReviews() {
     try {
         const params = new URLSearchParams();
-        if (currentOperator !== '全部') params.append('operator', currentOperator);
+        if (currentWarZone !== '全部') params.append('war_zone', currentWarZone);
         const res = await fetch(`/api/inspection/reviews?${params}`);
         reviews = await res.json();
     } catch(e) { console.error('加载审核记录失败:', e); }
@@ -135,7 +180,6 @@ async function loadReviews() {
 function renderPendingItems() {
     const container = document.getElementById('itemsContainer');
     container.innerHTML = '';
-
     const pendingItems = allItems.filter(item => {
         const r = reviews[item.id];
         if (!r) return true;
@@ -143,7 +187,6 @@ function renderPendingItems() {
         if (!r['审核结果']) return true;
         return false;
     });
-
     if (pendingItems.length === 0 && allItems.length === 0) {
         container.innerHTML = '<div class="empty-msg">📭 暂无检查项数据，请上传Excel</div>';
         return;
@@ -152,9 +195,7 @@ function renderPendingItems() {
         container.innerHTML = '<div class="empty-msg">🎉 当前页已全部审核完成</div>';
         return;
     }
-
     pendingItems.forEach(item => container.appendChild(createItemCard(item)));
-
     setTimeout(() => {
         updateVisibleCards();
         currentFocusIndex = 0;
@@ -167,12 +208,10 @@ function createItemCard(item) {
     card.className = 'item-card';
     card.dataset.itemId = item.id;
     card.dataset.storeId = item['门店编号'];
-
     const review = reviews[item.id];
     const status = review ? review['审核结果'] : null;
     const note = review ? review['问题描述'] || '' : '';
     const imageUrl = item['标准图'] || '';
-
     card.innerHTML = `
         <div class="card-header">
             <div class="store-info">
@@ -181,7 +220,6 @@ function createItemCard(item) {
                     <span>${esc(item['门店编号'])}</span>
                     <span>|</span>
                     <span>${esc(item['所属区域'])}</span>
-                    <span class="op-badge">👤 ${esc(item['负责运营'])}</span>
                 </div>
             </div>
             <div class="item-name">📋 ${esc(item['检查项名称'])}</div>
@@ -209,7 +247,6 @@ function createItemCard(item) {
             </div>
         </div>
     `;
-
     if (imageUrl) {
         const imgContainer = card.querySelector('.image-container');
         const img = imgContainer.querySelector('img');
@@ -221,7 +258,6 @@ function createItemCard(item) {
         }
         imgContainer.onclick = () => openImageModal(imageUrl, item['门店名称'] + ' - ' + item['检查项名称']);
     }
-
     return card;
 }
 
@@ -229,7 +265,6 @@ async function submitReview(itemId, result) {
     try {
         const problemContainer = document.getElementById(`problem-${itemId}`);
         const existing = reviews[itemId];
-
         if (result === '不合格') {
             if (existing && existing['审核结果'] === '不合格' && existing['问题描述']) {
                 if (problemContainer.style.display === 'none') {
@@ -245,25 +280,19 @@ async function submitReview(itemId, result) {
         } else {
             problemContainer.style.display = 'none';
         }
-
         const res = await fetch('/api/inspection/review', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ item_id: itemId, '审核结果': result })
         });
         const data = await res.json();
-
         if (data.success) {
             reviews[itemId] = reviews[itemId] || {};
             reviews[itemId]['审核结果'] = result;
             if (result === '合格') reviews[itemId]['问题描述'] = '';
-
             updateCardStatus(itemId, result);
             showToast(result === '合格' ? '✓ 已标记合格' : '请输入问题描述', result === '合格' ? 'success' : 'info');
-
-            if (result === '合格') {
-                checkAndRemoveCompletedStore(itemId);
-            }
+            if (result === '合格') checkAndRemoveCompletedStore(itemId);
         } else {
             showToast('提交失败: ' + (data.error || ''), 'error');
         }
@@ -315,7 +344,6 @@ async function saveProblem(itemId) {
     const textarea = document.getElementById(`textarea-${itemId}`);
     const note = textarea.value.trim();
     if (!note) { showToast('⚠️ 请输入问题描述', 'error'); textarea.focus(); return; }
-
     try {
         const res = await fetch('/api/inspection/review/problem', {
             method: 'POST',
@@ -346,7 +374,7 @@ function switchView(view) {
 
 async function loadCompletedStores() {
     try {
-        const params = new URLSearchParams({ operator: currentOperator });
+        const params = new URLSearchParams({ war_zone: currentWarZone });
         const res = await fetch(`/api/inspection/completed?${params}`);
         const stores = await res.json();
         renderCompletedStores(stores);
@@ -370,7 +398,7 @@ function renderCompletedStores(stores) {
                     <div class="store-details">
                         <span>${esc(store.store_id)}</span>
                         <span>|</span>
-                        <span>👤 ${esc(store.operator)}</span>
+                        <span>🗺️ ${esc(store.war_zone)}</span>
                     </div>
                 </div>
                 <div class="completed-time">${esc(store.completed_time)}</div>
@@ -418,12 +446,6 @@ function updatePagination() {
     document.getElementById('nextPage').disabled = currentPage >= totalPages;
 }
 
-function updateAdminPanel() {
-    const panel = document.getElementById('adminPanel');
-    const op = currentOperator;
-    panel.style.display = (op === '袁') ? 'block' : 'none';
-}
-
 async function exportCSV() {
     try {
         showToast('⏳ 正在导出...', 'info');
@@ -451,23 +473,47 @@ async function syncToViewer() {
     } catch(e) { showToast('同步失败', 'error'); }
 }
 
+async function resetData() {
+    if (!adminPassword) { showToast('请先验证密码', 'error'); return; }
+    if (!confirm('⚠️ 确定要清空所有检查项数据吗？此操作不可恢复！')) return;
+    if (!confirm('再次确认：真的要清空所有数据吗？')) return;
+    try {
+        showToast('⏳ 正在清空...', 'info');
+        const res = await fetch('/api/inspection/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: adminPassword })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✓ ${data.message}`, 'success');
+            reviews = {};
+            allItems = [];
+            currentPage = 1;
+            loadItems();
+        } else {
+            showToast(data.error || '清空失败', 'error');
+        }
+    } catch(e) { showToast('清空失败', 'error'); }
+}
+
 async function uploadNewFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm(`确定上传 ${file.name} 开始新周期？这会清空现有审核数据。`)) {
-        e.target.value = ''; return;
-    }
+    if (!adminPassword) { showToast('请先验证密码', 'error'); e.target.value = ''; return; }
+    if (!confirm(`确定上传 ${file.name} 开始新周期？这会清空现有审核数据。`)) { e.target.value = ''; return; }
     try {
         showToast('⏳ 正在上传检查项...', 'info');
         const fd = new FormData();
         fd.append('file', file);
+        fd.append('password', adminPassword);
         const res = await fetch('/api/inspection/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.success) {
             showToast(`✓ ${data.message}`, 'success');
             reviews = {};
             currentPage = 1;
-            await loadOperators();
+            await loadWarZones();
             await loadReviews();
             await loadItems();
         } else {
@@ -480,9 +526,8 @@ async function uploadNewFile(e) {
 async function uploadWhitelistFile(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm(`确定上传白名单 ${file.name}？这会更新所有门店的运营人员关联。`)) {
-        e.target.value = ''; return;
-    }
+    if (!adminPassword) { showToast('请先验证密码', 'error'); e.target.value = ''; return; }
+    if (!confirm(`确定上传白名单 ${file.name}？这会更新所有门店的战区关联。`)) { e.target.value = ''; return; }
     try {
         showToast('⏳ 正在上传白名单...', 'info');
         const fd = new FormData();
@@ -491,6 +536,7 @@ async function uploadWhitelistFile(e) {
         const data = await res.json();
         if (data.success) {
             showToast(`✓ ${data.message}`, 'success');
+            await loadWarZones();
         } else {
             showToast(data.error || '上传失败', 'error');
         }
@@ -498,7 +544,6 @@ async function uploadWhitelistFile(e) {
     e.target.value = '';
 }
 
-// 图片相关
 function handleImgError(img, url, loadingDiv) {
     const retry = parseInt(img.dataset.retry || '0');
     if (retry < 3) {
@@ -540,7 +585,7 @@ function closeImageModal() {
     document.body.style.overflow = 'auto';
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImageModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeImageModal(); hidePasswordModal(); } });
 window.addEventListener('popstate', () => {
     const m = document.getElementById('imageModal');
     if (m && m.classList.contains('show')) { m.classList.remove('show'); document.body.style.overflow = 'auto'; }
