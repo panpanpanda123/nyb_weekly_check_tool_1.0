@@ -361,6 +361,8 @@ def register_inspection_routes(app, get_db_session):
 
             try:
                 df = pd.read_excel(filepath)
+                print(f"[DEBUG] Excel列名: {list(df.columns)}")
+                print(f"[DEBUG] 数据行数: {len(df)}")
 
                 # 验证必需字段
                 required = ['检查项名称', '门店名称', '门店编号', '所属区域']
@@ -372,6 +374,7 @@ def register_inspection_routes(app, get_db_session):
 
                 # 清空现有审核数据
                 session.query(InspectionReview).delete()
+                print("[DEBUG] 已清空现有数据")
 
                 # 预加载白名单（获取战区信息）
                 whitelist = {}
@@ -380,91 +383,103 @@ def register_inspection_routes(app, get_db_session):
                         'war_zone': store.war_zone or '未分配',
                         'operator': store.temp_operator or store.city_operator or '未分配'
                     }
+                print(f"[DEBUG] 白名单加载完成，共{len(whitelist)}条")
 
                 count = 0
                 auto_count = 0
+                error_rows = []
                 import json
                 import re
 
-                for _, row in df.iterrows():
-                    # 安全处理门店编号
+                for idx, row in df.iterrows():
                     try:
-                        if pd.notna(row['门店编号']):
-                            store_id_raw = row['门店编号']
-                            if isinstance(store_id_raw, float):
-                                store_id = str(int(store_id_raw))
-                            else:
-                                store_id = str(store_id_raw).strip()
-                        else:
-                            store_id = 'unknown'
-                    except:
-                        store_id = str(row['门店编号']).strip() if pd.notna(row['门店编号']) else 'unknown'
-                    
-                    item_name = str(row['检查项名称']).strip() if pd.notna(row['检查项名称']) else 'unknown'
-                    item_id = f"{store_id}_{item_name}"
-
-                    # 解析图片URL
-                    image_url = ''
-                    has_result = False
-                    if '现场结果' in df.columns and pd.notna(row['现场结果']):
-                        result_data = str(row['现场结果']).strip()
+                        # 安全处理门店编号
                         try:
-                            if result_data.startswith('[') and '],' in result_data:
-                                result_data = result_data[:result_data.index('],') + 1]
-                            urls = json.loads(result_data)
-                            if isinstance(urls, list) and len(urls) > 0:
-                                first = urls[0]
-                                if isinstance(first, str):
-                                    if first.strip().startswith('<img'):
-                                        m = re.search(r'src="([^"]+)"', first)
+                            if pd.notna(row['门店编号']):
+                                store_id_raw = row['门店编号']
+                                if isinstance(store_id_raw, float):
+                                    store_id = str(int(store_id_raw))
+                                else:
+                                    store_id = str(store_id_raw).strip()
+                            else:
+                                store_id = 'unknown'
+                        except:
+                            store_id = str(row['门店编号']).strip() if pd.notna(row['门店编号']) else 'unknown'
+                        
+                        item_name = str(row['检查项名称']).strip() if pd.notna(row['检查项名称']) else 'unknown'
+                        item_id = f"{store_id}_{item_name}"
+
+                        # 解析图片URL
+                        image_url = ''
+                        has_result = False
+                        if '现场结果' in df.columns and pd.notna(row['现场结果']):
+                            result_data = str(row['现场结果']).strip()
+                            try:
+                                if result_data.startswith('[') and '],' in result_data:
+                                    result_data = result_data[:result_data.index('],') + 1]
+                                urls = json.loads(result_data)
+                                if isinstance(urls, list) and len(urls) > 0:
+                                    first = urls[0]
+                                    if isinstance(first, str):
+                                        if first.strip().startswith('<img'):
+                                            m = re.search(r'src="([^"]+)"', first)
+                                            if m:
+                                                image_url = m.group(1)
+                                                has_result = True
+                                        else:
+                                            image_url = first
+                                            has_result = True
+                            except (json.JSONDecodeError, ValueError):
+                                if result_data and result_data != 'nan':
+                                    if result_data.startswith('<img'):
+                                        m = re.search(r'src="([^"]+)"', result_data)
                                         if m:
                                             image_url = m.group(1)
                                             has_result = True
                                     else:
-                                        image_url = first
+                                        image_url = result_data
                                         has_result = True
-                        except (json.JSONDecodeError, ValueError):
-                            if result_data and result_data != 'nan':
-                                if result_data.startswith('<img'):
-                                    m = re.search(r'src="([^"]+)"', result_data)
-                                    if m:
-                                        image_url = m.group(1)
-                                        has_result = True
-                                else:
-                                    image_url = result_data
-                                    has_result = True
 
-                    wl_info = whitelist.get(store_id, {'war_zone': '未分配', 'operator': '未分配'})
+                        wl_info = whitelist.get(store_id, {'war_zone': '未分配', 'operator': '未分配'})
 
-                    review = InspectionReview(
-                        item_id=item_id,
-                        store_name=str(row['门店名称']) if pd.notna(row['门店名称']) else '',
-                        store_id=store_id,
-                        area=str(row['所属区域']) if pd.notna(row['所属区域']) else '',
-                        item_name=item_name,
-                        item_category=str(row['检查项分类']) if '检查项分类' in df.columns and pd.notna(row['检查项分类']) else None,
-                        image_url=image_url,
-                        no_result=0 if has_result else 1,
-                        operator=wl_info['operator']  # 保留operator字段用于兼容
-                    )
+                        review = InspectionReview(
+                            item_id=item_id,
+                            store_name=str(row['门店名称']) if pd.notna(row['门店名称']) else '',
+                            store_id=store_id,
+                            area=str(row['所属区域']) if pd.notna(row['所属区域']) else '',
+                            item_name=item_name,
+                            item_category=str(row['检查项分类']) if '检查项分类' in df.columns and pd.notna(row['检查项分类']) else None,
+                            image_url=image_url,
+                            no_result=0 if has_result else 1,
+                            operator=wl_info['operator']
+                        )
 
-                    # 自动标记无现场结果的为不合格
-                    if not has_result:
-                        review.review_result = '不合格'
-                        review.problem_note = '无现场结果'
-                        review.review_time = datetime.now()
-                        auto_count += 1
+                        # 自动标记无现场结果的为不合格
+                        if not has_result:
+                            review.review_result = '不合格'
+                            review.problem_note = '无现场结果'
+                            review.review_time = datetime.now()
+                            auto_count += 1
 
-                    session.add(review)
-                    count += 1
+                        session.add(review)
+                        count += 1
+                    except Exception as row_err:
+                        error_rows.append(f"行{idx+2}: {str(row_err)}")
+                        if len(error_rows) <= 3:
+                            print(f"[DEBUG] 行{idx+2}处理失败: {row_err}")
+
+                if error_rows:
+                    print(f"[DEBUG] 共{len(error_rows)}行处理失败")
 
                 session.commit()
+                print(f"[DEBUG] 提交成功，共{count}条")
 
                 return jsonify({
                     'success': True,
                     'message': f'导入成功，共{count}条检查项，自动标记{auto_count}条无现场结果',
                     'total_items': count,
-                    'auto_reviewed': auto_count
+                    'auto_reviewed': auto_count,
+                    'errors': error_rows[:5] if error_rows else []
                 })
 
             finally:
@@ -472,6 +487,9 @@ def register_inspection_routes(app, get_db_session):
                     os.remove(filepath)
 
         except Exception as e:
+            import traceback
+            print(f"[ERROR] 上传失败: {str(e)}")
+            print(traceback.format_exc())
             return jsonify({'success': False, 'error': str(e)}), 500
 
     @app.route('/api/inspection/export', methods=['GET'])
