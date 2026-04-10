@@ -1,7 +1,7 @@
 // 门店评级系统前端逻辑
 
 // API 基础路径配置 - 根据当前路径自动检测
-const API_BASE_PATH = window.location.pathname.includes('/weeklycheck/') ? '/weeklycheck' : '';
+const API_BASE_PATH = '';
 
 // 全局状态
 let filterOptions = {
