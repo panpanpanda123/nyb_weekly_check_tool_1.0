@@ -76,6 +76,6 @@ echo ✅ 数据更新完成！
 echo ========================================
 echo.
 echo 访问地址查看最新数据：
-echo https://weeklycheck.blitzepanda.top/equipment
+echo https://weeklycheck.newyobo.top/equipment
 echo.
 pause

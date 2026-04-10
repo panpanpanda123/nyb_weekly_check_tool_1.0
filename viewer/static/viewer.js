@@ -1,7 +1,7 @@
 // 审核结果展示系统前端逻辑
 
 // API 基础路径配置（根据部署路径调整）
-// 子域名weeklycheck.blitzepanda.top直接代理到根路径，不需要前缀
+// 子域名weeklycheck.newyobo.top直接代理到根路径，不需要前缀
 const API_BASE_PATH = '';
 
 // 全局状态

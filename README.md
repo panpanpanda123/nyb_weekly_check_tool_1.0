@@ -6,15 +6,15 @@
 
 ### 📝 周清审核
 门店检查项审核和展示
-- 访问: https://weeklycheck.blitzepanda.top/
+- 访问: https://weeklycheck.newyobo.top/
 
 ### ⭐ 门店评级  
 门店等级评定(A/B/C/D)
-- 访问: https://weeklycheck.blitzepanda.top/rating
+- 访问: https://weeklycheck.newyobo.top/rating
 
 ### 🔧 设备异常
 收银设备和机顶盒离线监控
-- 访问: https://weeklycheck.blitzepanda.top/equipment
+- 访问: https://weeklycheck.newyobo.top/equipment
 
 ## 🚀 快速开始
 
