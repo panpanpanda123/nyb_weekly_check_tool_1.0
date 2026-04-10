@@ -374,6 +374,7 @@ def register_inspection_routes(app, get_db_session):
 
                 # 清空现有审核数据
                 session.query(InspectionReview).delete()
+                session.commit()  # 先提交删除操作
                 print("[DEBUG] 已清空现有数据")
 
                 # 预加载白名单（获取战区信息）
@@ -388,6 +389,7 @@ def register_inspection_routes(app, get_db_session):
                 count = 0
                 auto_count = 0
                 error_rows = []
+                seen_item_ids = set()  # 用于去重
                 import json
                 import re
 
@@ -408,6 +410,11 @@ def register_inspection_routes(app, get_db_session):
                         
                         item_name = str(row['检查项名称']).strip() if pd.notna(row['检查项名称']) else 'unknown'
                         item_id = f"{store_id}_{item_name}"
+
+                        # 跳过重复的item_id
+                        if item_id in seen_item_ids:
+                            continue
+                        seen_item_ids.add(item_id)
 
                         # 解析图片URL
                         image_url = ''
