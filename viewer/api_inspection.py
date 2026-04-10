@@ -389,7 +389,8 @@ def register_inspection_routes(app, get_db_session):
                 count = 0
                 auto_count = 0
                 error_rows = []
-                seen_item_ids = set()  # 用于去重
+                item_images = {}  # 用于收集同一检查项的所有图片 {item_id: [url1, url2, ...]}
+                item_data = {}    # 用于存储检查项的其他数据
                 import json
                 import re
 
@@ -411,14 +412,8 @@ def register_inspection_routes(app, get_db_session):
                         item_name = str(row['检查项名称']).strip() if pd.notna(row['检查项名称']) else 'unknown'
                         item_id = f"{store_id}_{item_name}"
 
-                        # 跳过重复的item_id
-                        if item_id in seen_item_ids:
-                            continue
-                        seen_item_ids.add(item_id)
-
                         # 解析图片URL
                         image_url = ''
-                        has_result = False
                         if '现场结果' in df.columns and pd.notna(row['现场结果']):
                             result_data = str(row['现场结果']).strip()
                             try:
@@ -432,48 +427,66 @@ def register_inspection_routes(app, get_db_session):
                                             m = re.search(r'src="([^"]+)"', first)
                                             if m:
                                                 image_url = m.group(1)
-                                                has_result = True
                                         else:
                                             image_url = first
-                                            has_result = True
                             except (json.JSONDecodeError, ValueError):
                                 if result_data and result_data != 'nan':
                                     if result_data.startswith('<img'):
                                         m = re.search(r'src="([^"]+)"', result_data)
                                         if m:
                                             image_url = m.group(1)
-                                            has_result = True
                                     else:
                                         image_url = result_data
-                                        has_result = True
 
-                        wl_info = whitelist.get(store_id, {'war_zone': '未分配', 'operator': '未分配'})
+                        # 收集图片到列表（新的在前面，保持最新的在第一位）
+                        if item_id not in item_images:
+                            item_images[item_id] = []
+                            wl_info = whitelist.get(store_id, {'war_zone': '未分配', 'operator': '未分配'})
+                            item_data[item_id] = {
+                                'store_name': str(row['门店名称']) if pd.notna(row['门店名称']) else '',
+                                'store_id': store_id,
+                                'area': str(row['所属区域']) if pd.notna(row['所属区域']) else '',
+                                'item_name': item_name,
+                                'item_category': str(row['检查项分类']) if '检查项分类' in df.columns and pd.notna(row['检查项分类']) else None,
+                                'operator': wl_info['operator']
+                            }
+                        
+                        if image_url and image_url not in item_images[item_id]:
+                            item_images[item_id].insert(0, image_url)  # 新的插入到前面
 
-                        review = InspectionReview(
-                            item_id=item_id,
-                            store_name=str(row['门店名称']) if pd.notna(row['门店名称']) else '',
-                            store_id=store_id,
-                            area=str(row['所属区域']) if pd.notna(row['所属区域']) else '',
-                            item_name=item_name,
-                            item_category=str(row['检查项分类']) if '检查项分类' in df.columns and pd.notna(row['检查项分类']) else None,
-                            image_url=image_url,
-                            no_result=0 if has_result else 1,
-                            operator=wl_info['operator']
-                        )
-
-                        # 自动标记无现场结果的为不合格
-                        if not has_result:
-                            review.review_result = '不合格'
-                            review.problem_note = '无现场结果'
-                            review.review_time = datetime.now()
-                            auto_count += 1
-
-                        session.add(review)
-                        count += 1
                     except Exception as row_err:
                         error_rows.append(f"行{idx+2}: {str(row_err)}")
                         if len(error_rows) <= 3:
                             print(f"[DEBUG] 行{idx+2}处理失败: {row_err}")
+
+                # 创建数据库记录
+                for item_id, images in item_images.items():
+                    data = item_data[item_id]
+                    has_result = len(images) > 0
+                    # 存储所有图片URL，用JSON格式
+                    image_url_str = json.dumps(images) if images else ''
+                    
+                    review = InspectionReview(
+                        item_id=item_id,
+                        store_name=data['store_name'],
+                        store_id=data['store_id'],
+                        area=data['area'],
+                        item_name=data['item_name'],
+                        item_category=data['item_category'],
+                        image_url=image_url_str,
+                        no_result=0 if has_result else 1,
+                        operator=data['operator']
+                    )
+
+                    # 自动标记无现场结果的为不合格
+                    if not has_result:
+                        review.review_result = '不合格'
+                        review.problem_note = '无现场结果'
+                        review.review_time = datetime.now()
+                        auto_count += 1
+
+                    session.add(review)
+                    count += 1
 
                 if error_rows:
                     print(f"[DEBUG] 共{len(error_rows)}行处理失败")

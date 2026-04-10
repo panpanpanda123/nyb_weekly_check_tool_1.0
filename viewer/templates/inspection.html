@@ -86,9 +86,12 @@
 
     <!-- 图片模态框 -->
     <div id="imageModal" class="image-modal" onclick="closeImageModal()">
-        <span class="modal-close">&times;</span>
+        <span class="modal-close" onclick="closeImageModal()">&times;</span>
+        <button class="modal-nav modal-prev" onclick="event.stopPropagation(); modalPrev();">‹</button>
         <img class="modal-content" id="modalImage" onclick="event.stopPropagation()">
+        <button class="modal-nav modal-next" onclick="event.stopPropagation(); modalNext();">›</button>
         <div class="modal-caption" id="modalCaption"></div>
+        <div class="modal-nav-info" id="modalNavInfo">← → 切换图片</div>
     </div>
 
     <!-- 密码输入模态框 -->

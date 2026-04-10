@@ -410,6 +410,40 @@ h1 { font-size: 24px; color: #2c3e50; margin-bottom: 15px; }
 .modal-content { max-width: 90%; max-height: 85vh; object-fit: contain; border-radius: 8px; }
 .modal-close { position: absolute; top: 20px; right: 35px; color: #fff; font-size: 50px; cursor: pointer; z-index: 10000; }
 .modal-caption { margin-top: 15px; color: #fff; padding: 10px 20px; background: rgba(0,0,0,0.7); border-radius: 8px; font-size: 14px; }
+.modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    font-size: 48px;
+    padding: 20px 15px;
+    cursor: pointer;
+    z-index: 10000;
+    transition: background 0.3s;
+}
+.modal-nav:hover { background: rgba(255,255,255,0.4); }
+.modal-prev { left: 20px; border-radius: 8px; }
+.modal-next { right: 20px; border-radius: 8px; }
+.modal-nav-info {
+    position: absolute;
+    bottom: 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+}
+
+/* 图片数量标记 */
+.image-count {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
 
 /* Toast */
 .toast {

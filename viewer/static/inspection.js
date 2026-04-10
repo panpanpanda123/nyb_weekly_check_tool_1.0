@@ -211,7 +211,25 @@ function createItemCard(item) {
     const review = reviews[item.id];
     const status = review ? review['审核结果'] : null;
     const note = review ? review['问题描述'] || '' : '';
-    const imageUrl = item['标准图'] || '';
+    
+    // 解析图片URL（可能是JSON数组或单个URL）
+    let images = [];
+    const imageUrlRaw = item['标准图'] || '';
+    if (imageUrlRaw) {
+        try {
+            const parsed = JSON.parse(imageUrlRaw);
+            if (Array.isArray(parsed)) {
+                images = parsed;
+            } else {
+                images = [imageUrlRaw];
+            }
+        } catch {
+            images = [imageUrlRaw];
+        }
+    }
+    const firstImage = images.length > 0 ? images[0] : '';
+    const imageCount = images.length;
+
     card.innerHTML = `
         <div class="card-header">
             <div class="store-info">
@@ -226,9 +244,10 @@ function createItemCard(item) {
         </div>
         <div class="card-body">
             <div class="image-container clickable-image">
-                ${imageUrl ?
+                ${firstImage ?
                     `<img alt="${esc(item['检查项名称'])}" loading="lazy" referrerpolicy="no-referrer" data-retry="0">
-                     <div class="image-loading">⏳ 加载中...</div>` :
+                     <div class="image-loading">⏳ 加载中...</div>
+                     ${imageCount > 1 ? `<div class="image-count">📷 ${imageCount}张</div>` : ''}` :
                     '<div class="image-placeholder">📷 暂无图片</div>'}
             </div>
             <div class="review-buttons">
@@ -247,16 +266,16 @@ function createItemCard(item) {
             </div>
         </div>
     `;
-    if (imageUrl) {
+    if (firstImage) {
         const imgContainer = card.querySelector('.image-container');
         const img = imgContainer.querySelector('img');
         const loading = imgContainer.querySelector('.image-loading');
         if (img) {
             img.onload = () => { if (loading) loading.style.display = 'none'; };
-            img.onerror = () => handleImgError(img, imageUrl, loading);
-            img.src = imageUrl;
+            img.onerror = () => handleImgError(img, firstImage, loading);
+            img.src = firstImage;
         }
-        imgContainer.onclick = () => openImageModal(imageUrl, item['门店名称'] + ' - ' + item['检查项名称']);
+        imgContainer.onclick = () => openImageModal(images, 0, item['门店名称'] + ' - ' + item['检查项名称']);
     }
     return card;
 }
@@ -571,13 +590,49 @@ function retryImg(btn) {
     }
 }
 
-function openImageModal(src, caption) {
-    if (!src) return;
+// 图片模态框相关
+let modalImages = [];
+let modalCurrentIndex = 0;
+let modalCaption = '';
+
+function openImageModal(images, index, caption) {
+    if (!images || images.length === 0) return;
+    modalImages = Array.isArray(images) ? images : [images];
+    modalCurrentIndex = index || 0;
+    modalCaption = caption || '';
+    
     const modal = document.getElementById('imageModal');
-    document.getElementById('modalImage').src = src;
-    document.getElementById('modalCaption').textContent = caption;
+    updateModalImage();
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
+}
+
+function updateModalImage() {
+    const img = document.getElementById('modalImage');
+    const captionEl = document.getElementById('modalCaption');
+    const navInfo = document.getElementById('modalNavInfo');
+    
+    img.src = modalImages[modalCurrentIndex];
+    
+    if (modalImages.length > 1) {
+        captionEl.textContent = `${modalCaption} (${modalCurrentIndex + 1}/${modalImages.length})`;
+        if (navInfo) navInfo.style.display = 'flex';
+    } else {
+        captionEl.textContent = modalCaption;
+        if (navInfo) navInfo.style.display = 'none';
+    }
+}
+
+function modalPrev() {
+    if (modalImages.length <= 1) return;
+    modalCurrentIndex = (modalCurrentIndex - 1 + modalImages.length) % modalImages.length;
+    updateModalImage();
+}
+
+function modalNext() {
+    if (modalImages.length <= 1) return;
+    modalCurrentIndex = (modalCurrentIndex + 1) % modalImages.length;
+    updateModalImage();
 }
 
 function closeImageModal() {
@@ -585,7 +640,15 @@ function closeImageModal() {
     document.body.style.overflow = 'auto';
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeImageModal(); hidePasswordModal(); } });
+document.addEventListener('keydown', e => { 
+    if (e.key === 'Escape') { closeImageModal(); hidePasswordModal(); }
+    // 模态框内左右键切换图片
+    const modal = document.getElementById('imageModal');
+    if (modal && modal.classList.contains('show')) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); modalPrev(); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); modalNext(); }
+    }
+});
 window.addEventListener('popstate', () => {
     const m = document.getElementById('imageModal');
     if (m && m.classList.contains('show')) { m.classList.remove('show'); document.body.style.overflow = 'auto'; }
