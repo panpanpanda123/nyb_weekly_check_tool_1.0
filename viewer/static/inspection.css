@@ -71,7 +71,7 @@ h1 { font-size: 24px; color: #2c3e50; margin-bottom: 15px; }
 .filter-section { display: flex; align-items: center; gap: 8px; }
 .filter-section label { font-size: 14px; font-weight: 500; white-space: nowrap; }
 
-.operator-filter {
+.war-zone-filter {
     padding: 8px 12px;
     border: 2px solid #ddd;
     border-radius: 8px;
@@ -139,6 +139,35 @@ h1 { font-size: 24px; color: #2c3e50; margin-bottom: 15px; }
     background: #f8f9fa;
     padding: 12px;
     border-radius: 8px;
+    margin-top: 15px;
+}
+.admin-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.admin-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+.admin-login-btn {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.admin-login-btn:hover { opacity: 0.9; }
+.admin-status {
+    font-size: 13px;
+    color: #95a5a6;
+}
+.admin-status.verified {
+    color: #27ae60;
+    font-weight: 600;
 }
 .admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .admin-btn {
@@ -158,6 +187,8 @@ h1 { font-size: 24px; color: #2c3e50; margin-bottom: 15px; }
 .sync-btn:hover { background: #d35400; }
 .wl-btn { background: #8e44ad; }
 .wl-btn:hover { background: #7d3c98; }
+.reset-btn { background: #e74c3c; }
+.reset-btn:hover { background: #c0392b; }
 .admin-tip {
     margin-top: 8px;
     font-size: 12px;
@@ -167,6 +198,67 @@ h1 { font-size: 24px; color: #2c3e50; margin-bottom: 15px; }
     border-radius: 6px;
     border-left: 3px solid #f39c12;
 }
+
+/* 密码模态框 */
+.password-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+}
+.password-modal.show { display: flex; }
+.password-dialog {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    text-align: center;
+    min-width: 300px;
+}
+.password-dialog h3 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+}
+.password-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+.password-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+.password-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.pwd-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.pwd-btn.cancel {
+    background: #95a5a6;
+    color: white;
+}
+.pwd-btn.cancel:hover { background: #7f8c8d; }
+.pwd-btn.confirm {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+.pwd-btn.confirm:hover { opacity: 0.9; }
 
 /* 检查项卡片 */
 #itemsContainer {

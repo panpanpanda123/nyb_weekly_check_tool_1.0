@@ -7,13 +7,13 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>周清审核(运营)</title>
+    <title>周清审核</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='inspection.css') }}?v={{ range(1, 999999) | random }}">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏪 周清审核(运营)</h1>
+            <h1>🏪 周清审核</h1>
             <div class="feedback-notice">
                 💬 有使用问题或BUG,请在企微群反馈
             </div>
@@ -21,7 +21,7 @@
             <!-- 功能选项卡 -->
             <div class="function-tabs">
                 <button class="tab-btn" onclick="location.href='/'">📝 周清结果展示(督导)</button>
-                <button class="tab-btn active">✏️ 周清审核(运营)</button>
+                <button class="tab-btn active">✏️ 周清审核</button>
                 <button class="tab-btn" onclick="location.href='/rating'">⭐ 门店评级</button>
                 <button class="tab-btn" onclick="location.href='/equipment'">🔧 设备异常</button>
                 <button class="tab-btn" onclick="location.href='/promoratio'">📊 活动参与度</button>
@@ -30,8 +30,8 @@
 
             <div class="header-controls">
                 <div class="filter-section">
-                    <label for="operatorFilter">👤 运营人员:</label>
-                    <select id="operatorFilter" class="operator-filter">
+                    <label for="warZoneFilter">🗺️ 战区:</label>
+                    <select id="warZoneFilter" class="war-zone-filter">
                         <option value="全部">全部</option>
                     </select>
                 </div>
@@ -50,14 +50,20 @@
             </div>
 
             <!-- 管理员面板 -->
-            <div id="adminPanel" class="admin-panel" style="display:none;">
-                <div class="admin-actions">
+            <div id="adminPanel" class="admin-panel">
+                <div class="admin-header">
+                    <span class="admin-title">🔐 管理操作</span>
+                    <button id="adminLoginBtn" class="admin-login-btn">输入密码</button>
+                    <span id="adminStatus" class="admin-status"></span>
+                </div>
+                <div id="adminActions" class="admin-actions" style="display:none;">
                     <label for="uploadWhitelist" class="admin-btn wl-btn">📋 更新白名单</label>
                     <input type="file" id="uploadWhitelist" accept=".xlsx" style="display:none;">
                     <label for="uploadFile" class="admin-btn upload-btn">📤 上传检查项Excel</label>
                     <input type="file" id="uploadFile" accept=".xlsx" style="display:none;">
                     <button id="exportBtn" class="admin-btn">📥 导出CSV</button>
                     <button id="syncBtn" class="admin-btn sync-btn">🔄 同步到展示系统</button>
+                    <button id="resetBtn" class="admin-btn reset-btn">🗑️ 清空数据</button>
                 </div>
                 <div id="adminTip" class="admin-tip">💡 操作顺序：先更新白名单 → 再上传检查项Excel</div>
             </div>
@@ -83,6 +89,18 @@
         <span class="modal-close">&times;</span>
         <img class="modal-content" id="modalImage" onclick="event.stopPropagation()">
         <div class="modal-caption" id="modalCaption"></div>
+    </div>
+
+    <!-- 密码输入模态框 -->
+    <div id="passwordModal" class="password-modal">
+        <div class="password-dialog">
+            <h3>🔐 请输入管理密码</h3>
+            <input type="password" id="passwordInput" class="password-input" placeholder="输入密码">
+            <div class="password-buttons">
+                <button id="passwordCancel" class="pwd-btn cancel">取消</button>
+                <button id="passwordConfirm" class="pwd-btn confirm">确认</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast"></div>

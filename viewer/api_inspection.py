@@ -1,6 +1,6 @@
 """
-周清审核(运营) API
-Inspection Review API for Operations Staff
+周清审核 API
+Inspection Review API (按战区筛选)
 """
 import pandas as pd
 from flask import request, jsonify
@@ -8,41 +8,64 @@ from sqlalchemy import func, distinct
 from datetime import datetime
 from shared.database_models import InspectionReview, StoreWhitelist
 
+# 管理员密码
+ADMIN_PASSWORD = 'yuanmingjie'
+
 
 def register_inspection_routes(app, get_db_session):
-    """注册周清审核(运营)相关路由"""
+    """注册周清审核相关路由"""
 
-    @app.route('/api/inspection/operators', methods=['GET'])
-    def get_inspection_operators():
-        """获取运营人员列表"""
+    @app.route('/api/inspection/war-zones', methods=['GET'])
+    def get_inspection_war_zones():
+        """获取战区列表（从白名单获取）"""
         session = get_db_session()
         try:
-            operators = session.query(InspectionReview.operator)\
-                .filter(InspectionReview.operator.isnot(None))\
-                .filter(InspectionReview.operator != '')\
-                .filter(InspectionReview.operator != '未分配')\
+            # 从白名单获取所有战区
+            war_zones = session.query(StoreWhitelist.war_zone)\
+                .filter(StoreWhitelist.war_zone.isnot(None))\
+                .filter(StoreWhitelist.war_zone != '')\
                 .distinct()\
-                .order_by(InspectionReview.operator)\
+                .order_by(StoreWhitelist.war_zone)\
                 .all()
-            return jsonify([op[0] for op in operators])
+            return jsonify([wz[0] for wz in war_zones])
         except Exception as e:
             return jsonify({'error': str(e)}), 500
         finally:
             session.close()
 
+    @app.route('/api/inspection/verify-password', methods=['POST'])
+    def verify_inspection_password():
+        """验证管理员密码"""
+        try:
+            data = request.get_json()
+            password = data.get('password', '')
+            if password == ADMIN_PASSWORD:
+                return jsonify({'success': True})
+            else:
+                return jsonify({'success': False, 'error': '密码错误'}), 401
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
     @app.route('/api/inspection/items', methods=['GET'])
     def get_inspection_items():
-        """获取检查项数据（按运营人员筛选，分页）"""
+        """获取检查项数据（按战区筛选，分页）"""
         session = get_db_session()
         try:
-            operator = request.args.get('operator', '全部')
+            war_zone = request.args.get('war_zone', '全部')
             page = int(request.args.get('page', 1))
             per_page = int(request.args.get('per_page', 10))  # 每页门店数
 
+            # 预加载白名单，建立门店ID到战区的映射
+            whitelist_map = {}
+            for store in session.query(StoreWhitelist).all():
+                whitelist_map[store.store_id] = store.war_zone or '未分配'
+
             query = session.query(InspectionReview)
 
-            if operator and operator != '全部':
-                query = query.filter(InspectionReview.operator == operator)
+            # 如果指定了战区，需要先获取该战区的门店ID列表
+            if war_zone and war_zone != '全部':
+                store_ids_in_zone = [sid for sid, wz in whitelist_map.items() if wz == war_zone]
+                query = query.filter(InspectionReview.store_id.in_(store_ids_in_zone))
 
             # 排除无现场结果的（已自动标记不合格）
             # 排除已审核完成的门店
@@ -107,14 +130,20 @@ def register_inspection_routes(app, get_db_session):
         """获取所有审核结果"""
         session = get_db_session()
         try:
-            operator = request.args.get('operator', '')
+            war_zone = request.args.get('war_zone', '')
+
+            # 预加载白名单
+            whitelist_map = {}
+            for store in session.query(StoreWhitelist).all():
+                whitelist_map[store.store_id] = store.war_zone or '未分配'
 
             query = session.query(InspectionReview)\
                 .filter(InspectionReview.review_result.isnot(None))\
                 .filter(InspectionReview.review_result != '')
 
-            if operator and operator != '全部':
-                query = query.filter(InspectionReview.operator == operator)
+            if war_zone and war_zone != '全部':
+                store_ids_in_zone = [sid for sid, wz in whitelist_map.items() if wz == war_zone]
+                query = query.filter(InspectionReview.store_id.in_(store_ids_in_zone))
 
             reviews = query.all()
             result = {}
@@ -182,11 +211,17 @@ def register_inspection_routes(app, get_db_session):
         """获取审核统计"""
         session = get_db_session()
         try:
-            operator = request.args.get('operator', '全部')
+            war_zone = request.args.get('war_zone', '全部')
+
+            # 预加载白名单
+            whitelist_map = {}
+            for store in session.query(StoreWhitelist).all():
+                whitelist_map[store.store_id] = store.war_zone or '未分配'
 
             query = session.query(InspectionReview)
-            if operator and operator != '全部':
-                query = query.filter(InspectionReview.operator == operator)
+            if war_zone and war_zone != '全部':
+                store_ids_in_zone = [sid for sid, wz in whitelist_map.items() if wz == war_zone]
+                query = query.filter(InspectionReview.store_id.in_(store_ids_in_zone))
 
             all_items = query.all()
 
@@ -231,21 +266,31 @@ def register_inspection_routes(app, get_db_session):
         """获取已完成门店列表"""
         session = get_db_session()
         try:
-            operator = request.args.get('operator', '全部')
+            war_zone_filter = request.args.get('war_zone', '全部')
+
+            # 预加载白名单
+            whitelist_map = {}
+            for store in session.query(StoreWhitelist).all():
+                whitelist_map[store.store_id] = {
+                    'war_zone': store.war_zone or '未分配',
+                    'regional_manager': store.regional_manager or ''
+                }
 
             query = session.query(InspectionReview)
-            if operator and operator != '全部':
-                query = query.filter(InspectionReview.operator == operator)
+            if war_zone_filter and war_zone_filter != '全部':
+                store_ids_in_zone = [sid for sid, info in whitelist_map.items() if info['war_zone'] == war_zone_filter]
+                query = query.filter(InspectionReview.store_id.in_(store_ids_in_zone))
 
             all_items = query.all()
 
             store_groups = {}
             for item in all_items:
                 if item.store_id not in store_groups:
+                    wl_info = whitelist_map.get(item.store_id, {'war_zone': '未分配', 'regional_manager': ''})
                     store_groups[item.store_id] = {
                         'store_id': item.store_id,
                         'store_name': item.store_name,
-                        'operator': item.operator or '未分配',
+                        'war_zone': wl_info['war_zone'],
                         'items': []
                     }
                 store_groups[item.store_id]['items'].append(item)
@@ -280,7 +325,7 @@ def register_inspection_routes(app, get_db_session):
                     completed.append({
                         'store_id': store_id,
                         'store_name': store['store_name'],
-                        'operator': store['operator'],
+                        'war_zone': store['war_zone'],
                         'pass_count': pass_count,
                         'fail_count': fail_count,
                         'total_count': pass_count + fail_count,
@@ -296,8 +341,13 @@ def register_inspection_routes(app, get_db_session):
 
     @app.route('/api/inspection/upload', methods=['POST'])
     def upload_inspection_data():
-        """上传检查项Excel文件（开始新周期）"""
+        """上传检查项Excel文件（开始新周期）- 需要密码验证"""
         try:
+            # 验证密码
+            password = request.form.get('password', '')
+            if password != ADMIN_PASSWORD:
+                return jsonify({'success': False, 'error': '密码错误，无权操作'}), 401
+
             if 'file' not in request.files:
                 return jsonify({'success': False, 'error': '未选择文件'}), 400
 
@@ -323,11 +373,13 @@ def register_inspection_routes(app, get_db_session):
                 # 清空现有审核数据
                 session.query(InspectionReview).delete()
 
-                # 预加载白名单
+                # 预加载白名单（获取战区信息）
                 whitelist = {}
                 for store in session.query(StoreWhitelist).all():
-                    op = store.temp_operator or store.city_operator or '未分配'
-                    whitelist[store.store_id] = op
+                    whitelist[store.store_id] = {
+                        'war_zone': store.war_zone or '未分配',
+                        'operator': store.temp_operator or store.city_operator or '未分配'
+                    }
 
                 count = 0
                 auto_count = 0
@@ -370,7 +422,7 @@ def register_inspection_routes(app, get_db_session):
                                     image_url = result_data
                                     has_result = True
 
-                    operator = whitelist.get(store_id, '未分配')
+                    wl_info = whitelist.get(store_id, {'war_zone': '未分配', 'operator': '未分配'})
 
                     review = InspectionReview(
                         item_id=item_id,
@@ -381,7 +433,7 @@ def register_inspection_routes(app, get_db_session):
                         item_category=str(row['检查项分类']) if '检查项分类' in df.columns and pd.notna(row['检查项分类']) else None,
                         image_url=image_url,
                         no_result=0 if has_result else 1,
-                        operator=operator
+                        operator=wl_info['operator']  # 保留operator字段用于兼容
                     )
 
                     # 自动标记无现场结果的为不合格
@@ -477,6 +529,30 @@ def register_inspection_routes(app, get_db_session):
             )
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        finally:
+            session.close()
+
+    @app.route('/api/inspection/reset', methods=['POST'])
+    def reset_inspection_data():
+        """重置所有审核数据（清空表）- 需要密码验证"""
+        session = get_db_session()
+        try:
+            data = request.get_json()
+            password = data.get('password', '')
+            if password != ADMIN_PASSWORD:
+                return jsonify({'success': False, 'error': '密码错误，无权操作'}), 401
+
+            count = session.query(InspectionReview).count()
+            session.query(InspectionReview).delete()
+            session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'已清空{count}条检查项数据'
+            })
+        except Exception as e:
+            session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
         finally:
             session.close()
 
