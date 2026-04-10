@@ -387,8 +387,20 @@ def register_inspection_routes(app, get_db_session):
                 import re
 
                 for _, row in df.iterrows():
-                    store_id = str(int(row['门店编号'])) if pd.notna(row['门店编号']) else 'unknown'
-                    item_name = str(row['检查项名称']) if pd.notna(row['检查项名称']) else 'unknown'
+                    # 安全处理门店编号
+                    try:
+                        if pd.notna(row['门店编号']):
+                            store_id_raw = row['门店编号']
+                            if isinstance(store_id_raw, float):
+                                store_id = str(int(store_id_raw))
+                            else:
+                                store_id = str(store_id_raw).strip()
+                        else:
+                            store_id = 'unknown'
+                    except:
+                        store_id = str(row['门店编号']).strip() if pd.notna(row['门店编号']) else 'unknown'
+                    
+                    item_name = str(row['检查项名称']).strip() if pd.notna(row['检查项名称']) else 'unknown'
                     item_id = f"{store_id}_{item_name}"
 
                     # 解析图片URL
